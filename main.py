@@ -66,28 +66,13 @@ app.add_middleware(
 # CORS middleware with proper configuration
  # Set up CORS
 app.add_middleware(
-        CORSMiddleware,
-        # allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_origin_regex=".*",
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=[
-            "Content-Type",
-            "Authorization",
-            "Accept",
-            "Origin",
-            "X-Requested-With",
-            "Access-Control-Request-Method",
-            "Access-Control-Request-Headers"
-        ],
-        expose_headers=[
-            "Content-Type",
-            "Content-Length",
-            "X-Request-ID",
-            "Set-Cookie"
-        ]
-    )
-
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 
 # Include auth router with proper prefix and tags

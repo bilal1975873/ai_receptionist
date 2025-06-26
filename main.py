@@ -64,14 +64,31 @@ app.add_middleware(
 )
 
 # CORS middleware with proper configuration
+ # Set up CORS
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+        CORSMiddleware,
+        # allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origin_regex=".*",
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers"
+        ],
+        expose_headers=[
+            "Content-Type",
+            "Content-Length",
+            "X-Request-ID",
+            "Set-Cookie"
+        ]
+    )
+
+
 
 # Include auth router with proper prefix and tags
 app.include_router(
@@ -88,7 +105,7 @@ load_dotenv()
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TENANT_ID = os.getenv("TENANT_ID")
-REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "http://54.242.139.61:8000/auth/callback")
 
 if not all([CLIENT_ID, CLIENT_SECRET, TENANT_ID]):
     raise ValueError("Missing required Azure AD environment variables (CLIENT_ID, CLIENT_SECRET, TENANT_ID)")

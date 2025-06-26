@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 import type { Visitor, ApiResponse, VisitorInfo } from '../types';
 import { checkAuthAndRedirect } from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://54.242.139.61:8000';
 
 const api = axios.create({
   baseURL: API_URL,

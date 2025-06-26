@@ -11,7 +11,7 @@ load_dotenv()
 CLIENT_ID = os.getenv("CLIENT_ID")
 TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "http://54.242.139.61:8000/auth/callback")
 # Define scopes as a list to avoid conversion issues
 SCOPES = [
     'User.Read',

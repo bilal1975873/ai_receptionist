@@ -19,7 +19,7 @@ class AuthManager:
         self.client_id = os.getenv("CLIENT_ID")
         self.tenant_id = os.getenv("TENANT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")        
-        self.redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
+        self.redirect_uri = os.getenv("REDIRECT_URI", "http://54.242.139.61:8000/auth/callback")
         self.scope = "offline_access User.Read Chat.ReadWrite"  # Space-separated list of scopes
         self._token_lock = threading.Lock()
         # Defensive: ensure _token_lock always exists

@@ -1,7 +1,7 @@
 import type { ApiResponse, AuthState } from '../types';
 
 // Default to localhost if VITE_API_URL is not set
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://54.242.139.61:8000';
 
 // Validate API URL format
 const isValidUrl = (url: string) => {

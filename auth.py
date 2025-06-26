@@ -17,8 +17,8 @@ load_dotenv()
 CLIENT_ID = os.getenv("CLIENT_ID")
 TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "http://54.242.139.61:8000/auth/callback")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://54.242.139.61:5173")
 SCOPES = "https://graph.microsoft.com/User.Read openid profile offline_access"
 TOKEN_FILE = "tokens.json"
 

@@ -483,13 +483,26 @@ class PreScheduledFlow:
                     "N/A"
                 )
         
+        # Use robust subject extraction for purpose
+        subject = (
+            meeting.get('subject') or
+            meeting.get('title') or
+            meeting.get('name') or
+            meeting.get('purpose') or
+            meeting.get('bodyPreview') or
+            meeting.get('original_event', {}).get('subject') or
+            meeting.get('original_event', {}).get('title') or
+            meeting.get('original_event', {}).get('name') or
+            meeting.get('original_event', {}).get('purpose') or
+            ''
+        )
         await self.insert_prescheduled_visitor_to_db(
             visitor_type="prescheduled",
             full_name=self.visitor_info["visitor_name"],
             cnic=self.visitor_info["visitor_cnic"],
             phone=self.visitor_info["visitor_phone"],
             host=self.visitor_info["host_confirmed"],
-            purpose=meeting.get('subject', ''),
+            purpose=subject,
             is_group_visit=False,
             email=self.visitor_info["visitor_email"]
         )
@@ -559,12 +572,12 @@ class PreScheduledFlow:
         system_user_id = await self.ai.get_user_id(self.ai._system_account_email, access_token)
         chat_id = await self.ai.create_or_get_chat(host_user_id, system_user_id, access_token)
         message = (
-    "🔔 <b>Visitor Arrival Notification</b><br><br>"
+    "🔔 <b>Scheduled Visitor Arrival Notification</b><br><br>"
     "Your scheduled visitor has arrived. Here are the details:<br><br>"
     f"👤 Name: {self.visitor_info['visitor_name']}<br>"
     f"📞 Phone: {self.visitor_info['visitor_phone']}<br>"
     f"📧 Email: {self.visitor_info['visitor_email']}<br>"
     f"🕓 Scheduled Time: {time_range}<br>"
-    f"🎯 Purpose: {subject}"
+    f"🎯 Subject: {subject}"
 )
         await self.ai.send_message_to_host(chat_id, access_token, message)

@@ -112,7 +112,7 @@ class AuthManager:
             "refresh_token": tokens["refresh_token"],
             "grant_type": "refresh_token",
             "client_secret": self.client_secret,
-            "redirect_uri": "http://localhost:8000/auth/callback",
+            "redirect_uri": "https://receptionist.dplit.com:8000/auth/callback",
         }
         resp = requests.post(token_url, data=data)
         if resp.status_code == 200:

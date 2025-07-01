@@ -69,7 +69,9 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
     line.toLowerCase().includes('phone:') ||
     line.toLowerCase().includes('host:') ||
     line.toLowerCase().includes('purpose:') ||
-    line.toLowerCase().includes('supplier:')
+    line.toLowerCase().includes('supplier:') ||
+    line.toLowerCase().includes('email:') ||
+    line.toLowerCase().includes('meeting:')
   ) : [];
 
   // Remove summary info lines from the prompt to avoid duplication
@@ -87,7 +89,9 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
             line.toLowerCase().includes('phone:') ||
             line.toLowerCase().includes('host:') ||
             line.toLowerCase().includes('purpose:') ||
-            line.toLowerCase().includes('supplier:')
+            line.toLowerCase().includes('supplier:') ||
+            line.toLowerCase().includes('email:') ||
+            line.toLowerCase().includes('meeting:')
           )
         ) &&
         line.trim() !== ''

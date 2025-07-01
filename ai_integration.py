@@ -971,7 +971,7 @@ If you break these rules, you will be penalized. Output ONLY the question, nothi
             }
             body = {
                 "body": {
-                    "contentType": "text",
+                    "contentType": "html",  # <-- Send as HTML for Teams formatting
                     "content": message
                 }
             }
@@ -1013,7 +1013,18 @@ If you break these rules, you will be penalized. Output ONLY the question, nothi
                 return False
 
             # Send Teams message
-            message = f"Heads up! {visitor_name} just crashed the gates. Phone: {visitor_phone}"
+            message = (
+                "🚨 <b>Guest Arrival Notification</b><br><br>"
+                "A guest has stormed the gates. Here are the details:<br><br>"
+                f"👤 Name: {visitor_name}<br>"
+                f"📞 Phone: {visitor_phone}"
+            )
+            # if visitor_cnic := kwargs.get('visitor_cnic'):
+            #     message += f"<br>🆔 CNIC: {visitor_cnic}"
+            # if purpose := kwargs.get('purpose'):
+            #     message += f"<br>🎯 Purpose: {purpose}"
+            # if host := kwargs.get('host'):
+            #     message += f"<br>🤝 Host: {host}"
             logger.info("[DEBUG] Sending Teams message...")
             await self.send_message_to_host(chat_id, access_token, message)
             logger.info(f"[DEBUG] Teams notification sent successfully to {host_email}")

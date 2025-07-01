@@ -746,11 +746,24 @@ class DPLReceptionist:
                         system_user_id = await self.ai.get_user_id("saadsaad@dpl660.onmicrosoft.com", access_token)
                         admin_user_id = await self.ai.get_user_id("admin_IT@dpl660.onmicrosoft.com", access_token)
                         chat_id = await self.ai.create_or_get_chat(admin_user_id, system_user_id, access_token)
-                        message = f"A vendor has arrived at reception:\nName: {self.visitor_info.visitor_name}\nSupplier: {self.visitor_info.supplier}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
+                        # --- Use HTML for Teams notification, like pre-scheduled ---
+                        message = (
+                            "🔔 <b>Vendor Arrival Notification</b><br><br>"
+                            "A vendor has arrived at reception. Here are the details:<br><br>"
+                            f"👤 Name: {self.visitor_info.visitor_name}<br>"
+                            f"🏢 Supplier: {self.visitor_info.supplier}<br>"
+                            f"🆔 CNIC: {self.visitor_info.visitor_cnic}<br>"
+                            f"📞 Phone: {self.visitor_info.visitor_phone}"
+                        )
                         if self.visitor_info.is_group_visit:
-                            message += f"\nGroup size: {self.visitor_info.total_members}"
+                            message += f"<br>👥 Group size: {self.visitor_info.total_members}"
                             for idx, member in enumerate(self.visitor_info.group_members, 2):
-                                message += f"\nMember {idx}: {member.get('name','')} / {member.get('cnic','')} / {member.get('phone','')}"
+                                message += (
+    f"<br>Member {idx}:<br>"
+    f"&nbsp;&nbsp;👤 Name: {member.get('name','')}<br>"
+    f"&nbsp;&nbsp;🆔 CNIC: {member.get('cnic','')}<br>"
+    f"&nbsp;&nbsp;📞 Phone: {member.get('phone','')}"
+)
                         await self.ai.send_message_to_host(chat_id, access_token, message)
                     except Exception as e:
                         print(f"Error in Teams notification process: {e}")

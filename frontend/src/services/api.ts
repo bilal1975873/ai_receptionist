@@ -120,7 +120,7 @@ export const visitorService = {
       visitor_name: visitorInfo.full_name || visitorInfo.visitor_name,
       visitor_cnic: visitorInfo.cnic || visitorInfo.visitor_cnic,
       visitor_phone: visitorInfo.phone || visitorInfo.visitor_phone,
-      visitor_email: visitorInfo.email,
+      visitor_email: visitorInfo.visitor_email || visitorInfo.email,
       host_confirmed: visitorInfo.host,
       host_email: visitorInfo.host_email,
       host_requested: visitorInfo.host_requested,

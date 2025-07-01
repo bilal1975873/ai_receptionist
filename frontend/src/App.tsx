@@ -149,8 +149,16 @@ function App() {
       if (selected) {
         updatedVisitorInfo.host_confirmed = selected.displayName;
         updatedVisitorInfo.host_email = selected.email;
+        // --- Always preserve visitor_email when updating host fields ---
+        updatedVisitorInfo.visitor_email = state.visitorInfo.visitor_email || updatedVisitorInfo.visitor_email || state.visitorInfo.email || updatedVisitorInfo.email || '';
       }
     }
+
+    // Ensure visitor_email is always present
+    if (!updatedVisitorInfo.visitor_email) {
+      updatedVisitorInfo.visitor_email = updatedVisitorInfo.email || state.visitorInfo.visitor_email || state.visitorInfo.email || '';
+    }
+    console.log('[DEBUG][FRONTEND] visitorInfo before API call:', updatedVisitorInfo);
 
     // Add user message
     setState(prev => ({

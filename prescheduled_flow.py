@@ -279,7 +279,11 @@ class PreScheduledFlow:
             if start and 'T' in start:
                 try:
                     from dateutil.parser import parse
+                    import pytz
                     dt_start = parse(start)
+                    if dt_start.tzinfo is None:
+                        dt_start = dt_start.replace(tzinfo=pytz.UTC)
+                    dt_start = dt_start.astimezone(pytz.timezone('Asia/Karachi'))
                     start_fmt = dt_start.strftime('%b %d, %I:%M %p')
                 except Exception:
                     start_fmt = start
@@ -288,7 +292,11 @@ class PreScheduledFlow:
             if end and 'T' in end:
                 try:
                     from dateutil.parser import parse
+                    import pytz
                     dt_end = parse(end)
+                    if dt_end.tzinfo is None:
+                        dt_end = dt_end.replace(tzinfo=pytz.UTC)
+                    dt_end = dt_end.astimezone(pytz.timezone('Asia/Karachi'))
                     end_fmt = dt_end.strftime('%I:%M %p')
                 except Exception:
                     end_fmt = end
@@ -311,39 +319,33 @@ class PreScheduledFlow:
         
         print("[DEBUG] meeting object:", meeting)
         print("[DEBUG] visitor_info FULL:", self.visitor_info)
+        print("[DEBUG][BACKEND] visitor_info at confirmation:", self.visitor_info)
         
-        # --- FIXED: Use the stored visitor info first, then fallback to meeting data ---
-        
-        # Use the visitor name and phone from form input
+        # --- Ensure host/email fallback from meeting if missing ---
         visitor = self.visitor_info.get("visitor_name") or "N/A"
+        cnic = self.visitor_info.get("visitor_cnic") or "N/A"
         phone = self.visitor_info.get("visitor_phone") or "N/A"
-        
-        # Use the visitor email we stored during form input
         email = self.visitor_info.get("visitor_email") or "N/A"
-        print(f"[DEBUG] visitor_email from visitor_info: '{email}'")
-        
-        # Use the host info we stored during employee selection
+        print(f"[DEBUG][BACKEND] visitor_email at confirmation: {email}")
         host = self.visitor_info.get("host_confirmed") or "N/A"
-        host_email = self.visitor_info.get("host_email") or "N/A"
-        print(f"[DEBUG] host_confirmed from visitor_info: '{host}'")
-        print(f"[DEBUG] host_email from visitor_info: '{host_email}'")
-        
-        # If we still have N/A values, let's check if they're actually None or empty strings
-        if email == "N/A" or not email:
-            print("[DEBUG] Email is N/A or empty, checking visitor_info again...")
-            email = self.visitor_info.get("visitor_email")
-            if email is None or email == "":
-                email = "N/A"
-            print(f"[DEBUG] After recheck, email: '{email}'")
-        
-        if host == "N/A" or not host:
-            print("[DEBUG] Host is N/A or empty, checking visitor_info again...")
-            host = self.visitor_info.get("host_confirmed")
-            if host is None or host == "":
-                host = "N/A"
-            print(f"[DEBUG] After recheck, host: '{host}'")
-        
-        print(f"[DEBUG] Final values - visitor: {visitor}, phone: {phone}, email: {email}, host: {host}")
+        # Fallbacks if missing
+        organizer = meeting.get("organizer", {})
+        email_address = organizer.get("emailAddress", {})
+        if (not host or host == "N/A"):
+            host = (
+                email_address.get("name") or
+                organizer.get("displayName") or
+                organizer.get("name") or
+                meeting.get("host") or
+                self.visitor_info.get("host_requested") or
+                "N/A"
+            )
+        if (not email or email == "N/A"):
+            email = (
+                email_address.get("address") or
+                self.visitor_info.get("visitor_email") or
+                "N/A"
+            )
         
         # Extract subject with all possible fallbacks
         subject = (
@@ -379,7 +381,11 @@ class PreScheduledFlow:
         if start and 'T' in start:
             try:
                 from dateutil.parser import parse
+                import pytz
                 dt_start = parse(start)
+                if dt_start.tzinfo is None:
+                    dt_start = dt_start.replace(tzinfo=pytz.UTC)
+                dt_start = dt_start.astimezone(pytz.timezone('Asia/Karachi'))
                 start_fmt = dt_start.strftime('%b %d, %I:%M %p')
             except Exception:
                 start_fmt = start
@@ -388,7 +394,11 @@ class PreScheduledFlow:
         if end and 'T' in end:
             try:
                 from dateutil.parser import parse
+                import pytz
                 dt_end = parse(end)
+                if dt_end.tzinfo is None:
+                    dt_end = dt_end.replace(tzinfo=pytz.UTC)
+                dt_end = dt_end.astimezone(pytz.timezone('Asia/Karachi'))
                 end_fmt = dt_end.strftime('%I:%M %p')
             except Exception:
                 end_fmt = end
@@ -401,11 +411,16 @@ class PreScheduledFlow:
         else:
             time_range = start_fmt or ''
         
-        # Final confirmation message
+        # --- Unified, line-by-line confirmation message ---
         return (
             f"Please review your information.\n"
-            f"Confirmation:\nVisitor: {visitor}\nPhone: {phone}\nEmail: {email}\nHost: {host}\nMeeting: {subject} | {time_range}\n"
-            f"Type 'confirm' to proceed or 'edit' to start over."
+            f"Type 'confirm' to proceed or 'edit' to start over.\n"
+            f"Name: {visitor}\n"
+            f"CNIC: {cnic}\n"
+            f"Phone: {phone}\n"
+            f"Email: {email}\n"
+            f"Host: {host}\n"
+            f"Meeting: {subject} | {time_range}\n"
         )
 
     async def insert_prescheduled_visitor_to_db(self, visitor_type, full_name, cnic, phone, host, purpose, is_group_visit=False, group_members=None, total_members=1, email=None):
@@ -479,10 +494,77 @@ class PreScheduledFlow:
             email=self.visitor_info["visitor_email"]
         )
         
+        # --- Extract subject (purpose) and formatted time range for host notification ---
+        subject = (
+            meeting.get('subject') or
+            meeting.get('title') or
+            meeting.get('name') or
+            meeting.get('purpose') or
+            meeting.get('bodyPreview') or
+            meeting.get('original_event', {}).get('subject') or
+            meeting.get('original_event', {}).get('title') or
+            meeting.get('original_event', {}).get('name') or
+            meeting.get('original_event', {}).get('purpose') or
+            'N/A'
+        )
+        start = (
+            meeting.get('start_time') or
+            (meeting.get('start', {}).get('dateTime') if isinstance(meeting.get('start'), dict) else None) or
+            meeting.get('startDateTime') or
+            meeting.get('original_event', {}).get('start', {}).get('dateTime') or
+            ''
+        )
+        end = (
+            meeting.get('end_time') or
+            (meeting.get('end', {}).get('dateTime') if isinstance(meeting.get('end'), dict) else None) or
+            meeting.get('endDateTime') or
+            meeting.get('original_event', {}).get('end', {}).get('dateTime') or
+            ''
+        )
+        # Format start and end time for readability if possible
+        if start and 'T' in start:
+            try:
+                from dateutil.parser import parse
+                import pytz
+                dt_start = parse(start)
+                if dt_start.tzinfo is None:
+                    dt_start = dt_start.replace(tzinfo=pytz.UTC)
+                dt_start = dt_start.astimezone(pytz.timezone('Asia/Karachi'))
+                start_fmt = dt_start.strftime('%b %d, %I:%M %p')
+            except Exception:
+                start_fmt = start
+        else:
+            start_fmt = start or 'N/A'
+        if end and 'T' in end:
+            try:
+                from dateutil.parser import parse
+                import pytz
+                dt_end = parse(end)
+                if dt_end.tzinfo is None:
+                    dt_end = dt_end.replace(tzinfo=pytz.UTC)
+                dt_end = dt_end.astimezone(pytz.timezone('Asia/Karachi'))
+                end_fmt = dt_end.strftime('%I:%M %p')
+            except Exception:
+                end_fmt = end
+        else:
+            end_fmt = end or ''
+        if start_fmt and end_fmt:
+            time_range = f"{start_fmt} - {end_fmt}"
+        else:
+            time_range = start_fmt or ''
+
         # Notify host via Teams
         access_token = self.ai.get_system_account_token()
         host_user_id = await self.ai.get_user_id(self.visitor_info["host_email"], access_token)
         system_user_id = await self.ai.get_user_id(self.ai._system_account_email, access_token)
         chat_id = await self.ai.create_or_get_chat(host_user_id, system_user_id, access_token)
-        message = f"Your scheduled visitor has arrived:\nName: {self.visitor_info['visitor_name']}\nPhone: {self.visitor_info['visitor_phone']}\nEmail: {self.visitor_info['visitor_email']}\nScheduled Time: {meeting.get('start_time', '')}\nPurpose: {meeting.get('subject', '')}"
+        message = (
+    "🔔 <b>Visitor Arrival Notification</b><br><br>"
+    "Your scheduled visitor has arrived. Here are the details:<br><br>"
+    f"👤 Name: {self.visitor_info['visitor_name']}<br>"
+    f"📞 Phone: {self.visitor_info['visitor_phone']}<br>"
+    f"📧 Email: {self.visitor_info['visitor_email']}<br>"
+    f"🕓 Scheduled Time: {time_range}<br>"
+    f"🎯 Purpose: {subject}"
+)
         await self.ai.send_message_to_host(chat_id, access_token, message)

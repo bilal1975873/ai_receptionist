@@ -442,7 +442,7 @@ class AIReceptionist:
            
         return {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 900,  # Use class constant
+            "max_tokens_to_sample": 900,  # Use class constant
             "temperature": 0.999,
             "messages": messages,
             "top_p": 0.9
@@ -568,16 +568,41 @@ If you break these rules, you will be penalized. Output ONLY the question, nothi
                 step_rule = (
                     "RULE: Ask the guest, in a rebellious and fun style, for the name of the person they are here to see. Do not output anything else."
                 )
-            formatted_prompt = f"""<|im_start|>system\n{rebel_instruction}\n{step_rule}\nCurrent context:\nStep: {current_step}\n{formatted_context}\n\nUser message: {user_input}\n\n{FLOW_CONSTRAINTS}"""
+            # formatted_prompt = f"""<|im_start|>system\n{rebel_instruction}\n{step_rule}\nCurrent context:\nStep: {current_step}\n{formatted_context}\n\nUser message: {user_input}\n\n{FLOW_CONSTRAINTS}"""
+            formatted_prompt = f"""
+Human: You are DPL's AI receptionist. Your ONLY job is to output a single, direct, creative, and witty question for the user, in a rebellious, anti-corporate style.
 
+{step_rule}
+Current context:
+Step: {current_step}
+{formatted_context}
+
+User message: {user_input}
+
+{FLOW_CONSTRAINTS}
+
+Assistant:
+"""
+
+            
             model_id = os.getenv("AWS_BEDROCK_MODEL_ID", "anthropic.claude-instant-v1")
-            # Use Claude format if model_id starts with 'anthropic.claude'
-            if model_id.startswith("anthropic.claude"):
+            # Use Claude Messages API format for Claude 3.5 and above
+            if model_id.startswith("us.anthropic.claude-3-5") or model_id.startswith("anthropic.claude-3-5"):
+                request_payload = {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "messages": [
+                        {"role": "user", "content": f"{rebel_instruction}\n{step_rule}\nStep: {current_step}\n{formatted_context}\n\nUser message: {user_input}"}
+                    ],
+                    "max_tokens": 512,
+                    "temperature": 0.9,
+                    "top_p": 0.9
+                }
+            elif model_id.startswith("anthropic.claude"):
                 request_payload = self._format_claude_request(formatted_prompt)
             else:
                 request_payload = {
                     "prompt": formatted_prompt,
-                    "max_tokens": 512,
+                    "max_tokens_to_sample": 512,
                     "temperature": 0.9,
                     "top_p": 0.9,
                 }
@@ -608,11 +633,13 @@ If you break these rules, you will be penalized. Output ONLY the question, nothi
 
                 print(f"[DEBUG] Raw Bedrock response: {json.dumps(response_body, indent=2)}")
                 # Claude 3.5/3.0/2.1/2.0/Instant: extract from 'content' if present
-                if 'Error' in response_body or 'errorMessage' in response_body:
-                    print(f"[ERROR] Bedrock returned error: {response_body}")
-                    return "Sorry, the system is busy. Please wait a few seconds and try again."
-                if model_id.startswith("anthropic.claude") and "content" in response_body:
-                    # Claude 3.5/3.0/2.1/2.0/Instant: content is a list of dicts with type/text
+                if (model_id.startswith("us.anthropic.claude-3-5") or model_id.startswith("anthropic.claude-3-5")) and "content" in response_body:
+                    content_blocks = response_body["content"]
+                    generation = " ".join(
+                        block["text"] for block in content_blocks if block.get("type") == "text" and block.get("text")
+                    ).strip()
+                elif model_id.startswith("anthropic.claude") and "content" in response_body:
+                    # fallback for older Claude models
                     content_blocks = response_body["content"]
                     generation = " ".join(
                         block["text"] for block in content_blocks if block.get("type") == "text" and block.get("text")

@@ -140,7 +140,14 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="fixed inset-0 flex items-center justify-center p-4"
         >
-          <div className="w-full max-w-lg bg-gray-900/90 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-gray-700">
+          <div
+            className="w-full max-w-lg rounded-xl p-6 shadow-2xl border border-gray-700 backdrop-blur-md"
+            style={{
+              background: 'rgba(20, 24, 34, 0.78)', // dark, semi-transparent
+              boxShadow: '0 8px 32px 0 rgba(239, 68, 68, 0.37)', // red shadow
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
             {/* Question Content */}
             <div className="space-y-4">
               {/* Main Prompt */}

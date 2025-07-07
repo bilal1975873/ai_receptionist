@@ -151,7 +151,7 @@ def validate_with_context(field: str, value: str, context: ResponseContext) -> T
             if error_count > 2:
                 hints = {
                     "name": "Just use regular letters, like 'John Smith'",
-                    "cnic": "The dashes are important: 12345-1234567-1",
+                    "cnic": "The dashes are not important: 1234512345671",
                     "phone": "Start with '03' followed by 9 more digits",
                     "email": "Make sure it includes @ and a valid domain"
                 }

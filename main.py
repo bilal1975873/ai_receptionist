@@ -436,12 +436,11 @@ class DPLReceptionist:
                         else:
                             selected_employee = None
                     else:
-                        selected_employee = next(
-                            (emp for emp in self.employee_matches
-                             if emp["displayName"].lower() == user_input.lower() or
-                             user_input.lower() in emp["displayName"].lower()),
-                            None
-                        )
+                        # If it's not a number, treat as a fresh host search
+                        self.employee_selection_mode = False
+                        self.employee_matches = []
+                        self.current_step = "host"
+                        return await self._run_guest_host_step(user_input)
                     if selected_employee:
                         # Store host information
                         host_name = selected_employee["displayName"]
@@ -497,7 +496,7 @@ class DPLReceptionist:
                     elif isinstance(employee, list):
                         self.employee_selection_mode = True
                         self.employee_matches = employee
-                        options = "I found multiple potential matches. Please select one by number:\n"
+                        options = "I found multiple potential matches. Please select one:\n"
                         for i, emp in enumerate(employee, 1):
                             dept = emp.get("department", "Unknown Department")
                             options += f"  {i}. {emp['displayName']} ({dept})\n"
@@ -1074,7 +1073,30 @@ class DPLReceptionist:
         elif isinstance(employee, list):
             self.employee_selection_mode = True
             self.employee_matches = employee
-            options = "I found multiple potential matches. Please select one by number:\n"
+            options = "I found multiple potential matches. Please select one:\n"
+            for i, emp in enumerate(employee, 1):
+                dept = emp.get("department", "Unknown Department")
+                options += f"  {i}. {emp['displayName']} ({dept})\n"
+            options += "  0. None of these / Enter a different name"
+            return options
+        else:
+            return "No matches found. Please enter a different name."
+
+    async def _run_guest_host_step(self, user_input):
+        employee = await self.ai.search_employee(user_input.strip())
+        if isinstance(employee, dict):
+            self.employee_selection_mode = True
+            self.employee_matches = [employee]
+            dept = employee.get("department", "Unknown Department")
+            return (
+                "I found the following match. Please select by number:\n"
+                f"  1. {employee['displayName']} ({dept})\n"
+                "  0. None of these / Enter a different name"
+            )
+        elif isinstance(employee, list) and len(employee) > 0:
+            self.employee_selection_mode = True
+            self.employee_matches = employee
+            options = "I found multiple potential matches. Please select one:\n"
             for i, emp in enumerate(employee, 1):
                 dept = emp.get("department", "Unknown Department")
                 options += f"  {i}. {emp['displayName']} ({dept})\n"

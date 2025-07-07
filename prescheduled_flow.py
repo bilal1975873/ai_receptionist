@@ -33,36 +33,36 @@ class PreScheduledFlow:
         # Step 1: Name
         if self.current_step == "scheduled_name":
             if not user_input.strip():
-                return get_error_message("empty")
+                return get_error_message("empty_field")
             if not validate_name(user_input.strip()):
-                return get_error_message("name")
+                return get_error_message("name_invalid")
             self.visitor_info["visitor_name"] = user_input.strip()
             self.current_step = "scheduled_cnic"
-            return "Please provide your CNIC number in the format: 12345-1234567-1."
+            return "Please provide your CNIC number in the format: 1234512345671."
         # Step 2: CNIC
         elif self.current_step == "scheduled_cnic":
             if not user_input.strip():
-                return get_error_message("empty")
+                return get_error_message("empty_field")
             if not validate_cnic(user_input.strip()):
-                return get_error_message("cnic")
+                return get_error_message("cnic_invalid")
             self.visitor_info["visitor_cnic"] = user_input.strip()
             self.current_step = "scheduled_phone"
             return "Please provide your phone number in the format: 03001234567."
         # Step 3: Phone
         elif self.current_step == "scheduled_phone":
             if not user_input.strip():
-                return get_error_message("empty")
+                return get_error_message("empty_field")
             if not validate_phone(user_input.strip()):
-                return get_error_message("phone")
+                return get_error_message("phone_invalid")
             self.visitor_info["visitor_phone"] = user_input.strip()
             self.current_step = "scheduled_email"
             return "Please provide your email address."
         # Step 4: Email
         elif self.current_step == "scheduled_email":
             if not user_input.strip():
-                return get_error_message("empty")
+                return get_error_message("empty_field")
             if not validate_email(user_input.strip()):
-                return get_error_message("email")
+                return get_error_message("email_invalid")
             self.visitor_info["visitor_email"] = user_input.strip()
             print(f"[DEBUG] Email set to: '{self.visitor_info['visitor_email']}'")
             print(f"[DEBUG] visitor_info after email: {self.visitor_info}")
@@ -79,12 +79,16 @@ class PreScheduledFlow:
                     self.employee_matches = []
                     self.current_step = "scheduled_host"
                     return "Please enter the name of the person you are scheduled to meet (host)."
-                # If not a valid number, treat as a new host search
-                if not user_input.isdigit() or int(user_input) < 1 or int(user_input) > len(self.employee_matches):
+                # If in selection mode but user enters a name instead of a number
+                if not user_input.isdigit():
+                    # Treat as new name input (disable selection mode, reset and search again)
                     self.employee_selection_mode = False
                     self.employee_matches = []
                     self.current_step = "scheduled_host"
-                    return "Please enter the name of the person you are scheduled to meet (host)."
+                    return await self._run_host_step(user_input)
+                # If not a valid number, treat as invalid selection
+                if int(user_input) < 1 or int(user_input) > len(self.employee_matches):
+                    return "Invalid selection. Please try again."
                 selected = await self.ai.handle_employee_selection(user_input, self.employee_matches)
                 if selected:
                     self.visitor_info["host_confirmed"] = selected["displayName"]
@@ -100,33 +104,7 @@ class PreScheduledFlow:
                 else:
                     return "Invalid selection. Please try again."
             # Not in selection mode, do fuzzy search
-            matches = await self.ai.search_employee(user_input.strip())
-            if not matches:
-                return "No matching host found. Please try again."
-            if isinstance(matches, dict):
-                self.employee_selection_mode = True
-                self.employee_matches = [matches]
-                options = "I found the following match. Please select by number:\n"
-                emp = matches
-                options += f"1. {emp['displayName']} ({emp['email']})\n"
-                options += "0. Re-enter host name"
-                return options
-            if len(matches) == 1:
-                self.employee_selection_mode = True
-                self.employee_matches = matches
-                options = "I found the following match. Please select by number:\n"
-                emp = matches[0]
-                options += f"1. {emp['displayName']} ({emp['email']})\n"
-                options += "0. Re-enter host name"
-                return options
-            else:
-                self.employee_selection_mode = True
-                self.employee_matches = matches
-                options = "Please select your host by number:\n"
-                for idx, emp in enumerate(matches, 1):
-                    options += f"{idx}. {emp['displayName']} ({emp['email']})\n"
-                options += "0. Re-enter host name"
-                return options
+            return await self._run_host_step(user_input)
         # Step 6: Meeting selection
         elif self.current_step == "scheduled_meeting":
             if self.scheduled_meeting_selection_mode:
@@ -581,3 +559,34 @@ class PreScheduledFlow:
     f"🎯 Subject: {subject}"
 )
         await self.ai.send_message_to_host(chat_id, access_token, message)
+
+    async def _run_host_step(self, user_input):
+        matches = await self.ai.search_employee(user_input.strip())
+        if not matches:
+            return "No matching host found. Please try again."
+        if isinstance(matches, dict):
+            self.employee_selection_mode = True
+            self.employee_matches = [matches]
+            emp = matches
+            return (
+                "I found the following match. Please select by number:\n"
+                f"1. {emp['displayName']} ({emp['email']})\n"
+                "0. Re-enter host name"
+            )
+        if len(matches) == 1:
+            self.employee_selection_mode = True
+            self.employee_matches = matches
+            emp = matches[0]
+            return (
+                "I found the following match. Please select by number:\n"
+                f"1. {emp['displayName']} ({emp['email']})\n"
+                "0. Re-enter host name"
+            )
+        else:
+            self.employee_selection_mode = True
+            self.employee_matches = matches
+            options = "Please select your host by number:\n"
+            for idx, emp in enumerate(matches, 1):
+                options += f"{idx}. {emp['displayName']} ({emp['email']})\n"
+            options += "0. Re-enter host name"
+            return options

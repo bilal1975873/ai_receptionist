@@ -34,7 +34,7 @@ You are DPL's AI receptionist, the ultimate rebel against boring, bureaucratic, 
 
 **EXAMPLES (never output these literally, just use the style):**
 - Name: "Ready to disrupt the ordinary? Drop your alias, rebel!", "No ranks, no titles—just vibes. What's your handle?", "What's your moniker for today's rebellion?"
-- CNIC: "🆔 Bureaucracy meets rebellion—CNIC please! (Format: 12345-1234567-1)", "Official rebel credentials loading... CNIC? (Format: 12345-1234567-1)"
+- CNIC: "🆔 Bureaucracy meets rebellion—CNIC please! (Format: 1234512345671)", "Official rebel credentials loading... CNIC? (Format: 1234512345671)"
 - Phone: "📱 How do we reach you when the next disruption happens? (Format: 03001234567)", "The revolution is mobile—what's your contact? (Format: 03001234567)"
 - Host: "🎯 Which DPL rebel is expecting your awesomeness today?", "Who's your partner in innovation at DPL headquarters?"
 - Purpose: "🚀 What groundbreaking mission brings you to rebel HQ?", "Time to challenge the ordinary—what's your agenda today?"
@@ -62,14 +62,14 @@ You are DPL's AI receptionist, the ultimate rebel against boring, bureaucratic, 
 #     ],
     
 #     "cnic": [
-#         "🆔 Bureaucracy meets rebellion - CNIC please! (Format: 12345-1234567-1)",
-#         "Even rebels need ID cards! Drop your CNIC (Format: 12345-1234567-1):",
+#         "🆔 Bureaucracy meets rebellion - CNIC please! (Format: 1234512345671)",
+#         "Even rebels need ID cards! Drop your CNIC (Format: 1234512345671):",
 #         "CNIC, please. Bureaucracy bows to rebellion, but not entirely.",
-#         "Time to get delightfully official - CNIC needed (Format: 12345-1234567-1):",
-#         "Let's make the system work for us - CNIC please (Format: 12345-1234567-1):",
-#         "Challenging norms, following formats - your CNIC? (Format: 12345-1234567-1)",
-#         "Official rebel credentials loading... CNIC? (Format: 12345-1234567-1)",
-#         "Breaking rules, not laws - need that CNIC! (Format: 12345-1234567-1)"
+#         "Time to get delightfully official - CNIC needed (Format: 1234512345671):",
+#         "Let's make the system work for us - CNIC please (Format: 1234512345671):",
+#         "Challenging norms, following formats - your CNIC? (Format: 1234512345671)",
+#         "Official rebel credentials loading... CNIC? (Format: 1234512345671)",
+#         "Breaking rules, not laws - need that CNIC! (Format: 1234512345671)"
 #     ],
     
 #     "phone": [
@@ -213,6 +213,21 @@ ERROR_RESPONSES = {
     "🚫 Format rejected! Sir Carr can't process that - use alphabets only, minimum 2 letters!",
     "⚠️ Invalid! Real names have letters only and at least 2 characters. Try again, legend!",
     "🔴 Input error! That's not a valid name format - letters only, 2+ characters required!"
+],
+    
+    "email_invalid": [
+    "📧 Email format rebellion detected! Try something like: rebel@innovation.com",
+    "🚫 Sir Carr would’ve sent this email to the spam folder. Use a real email (e.g. rebel@dpl.com)!",
+    "⚡ That email missed the innovation inbox! Format: yourname@domain.com",
+    "🕵️‍♂️ Sir Carr sniffed out a fake email. Give us a legit one: rebel@startup.com",
+    "💡 Almost there, innovator! Email should look like: rebel@dpl.com",
+    "🎩 Sir Carr’s top hat just fell off—emails need an @ and a dot! Try again.",
+    "📬 That’s not a mailbox we can deliver to. Use: rebel@domain.com",
+    "🚀 Houston, we have an email problem! Try: rebel@innovation.com",
+    "🔍 Email format not found in our rebel database. Use: yourname@domain.com",
+    "🎯 Missed the email target! Try: rebel@dpl.com",
+    "🛑 Email rebellion too strong! Use a standard format: rebel@domain.com",
+    "📨 Even rebels need a working email. Try: yourname@startup.com"
 ]
     
 }
@@ -225,17 +240,17 @@ STATIC_PROMPTS = {
     "supplier_other": "Please enter your supplier name:",
     "vendor_name": "Please enter your full name:",
     "vendor_group_size": "Enter group size (1-10):",
-    "vendor_cnic": "Enter CNIC (Format: 12345-1234567-1):",
+    "vendor_cnic": "Enter CNIC (Format: 1234512345671):",
     "vendor_phone": "Enter phone number (Format: 03001234567):",
     "vendor_member_name": "Enter member {number} name:",
-    "vendor_member_cnic": "Enter member {number} CNIC (Format: 12345-1234567-1):", 
+    "vendor_member_cnic": "Enter member {number} CNIC (Format: 1234512345671):", 
     "vendor_member_phone": "Enter member {number} phone (Format: 03001234567):",
     "vendor_confirm": "Please review and type 'confirm' to proceed or 'edit' to make changes:",
     "vendor_notify": "Your registration is complete. An admin has been notified.",
     
     # Pre-scheduled flow - keep professional
     "scheduled_name": "Please enter your name:",
-    "scheduled_cnic": "Enter CNIC (Format: 12345-1234567-1):",
+    "scheduled_cnic": "Enter CNIC (Format: 1234512345671):",
     "scheduled_phone": "Please provide your contact number:",
     "scheduled_email": "Please enter your email address:",
     "scheduled_host": "Please enter the name of the person you're scheduled to meet with:",
@@ -387,7 +402,7 @@ AI_RESPONSE_CONTEXT = {
         "intent": "request_id",
         "requirements": ["format_reminder", "casual_tone"],
         "constraints": ["include_format", "maintain_flow", "must_include_word:CNIC"],
-        "format": "12345-1234567-1",
+        "format": "1234512345671",
         "style": "helpful_rebel"
     },
     "phone": {

@@ -6,14 +6,14 @@ from datetime import datetime
 
 # Validation patterns with strict rules
 NAME_PATTERN = r"^[A-Za-z\s]{2,50}$"  # Only letters and spaces, 2-50 chars
-CNIC_PATTERN = r"^\d{5}-\d{7}-\d{1}$"  # Format: 12345-1234567-1
+CNIC_PATTERN = r"^\d{13}$"  # Format: 13 digits, no dashes
 PHONE_PATTERN = r"^03\d{9}$"  # Format: 03001234567
 EMAIL_PATTERN = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 # Hardcoded validation error messages
 ERROR_MESSAGES = {
     "name": "Oops! Keep it simple - just letters and spaces for your name (2-50 characters)",
-    "cnic": "Hold up! That CNIC format isn't quite right. Think: 12345-1234567-1",
+    "cnic": "Hold up! That CNIC format isn't quite right. It should be 13 digits, no dashes (e.g. 1234512345671)",
     "phone": "Almost there! Just need your phone number like this: 03001234567",
     "email": "That email looks a bit off. Mind giving it another shot?",
     "group_size": "Group size must be a number between 1 and 10",
@@ -30,9 +30,9 @@ DYNAMIC_ERROR_MESSAGES = {
         "Let's stick to letters for your name - nothing fancy needed!"
     ],
     "cnic": [
-        "Hold up! That CNIC format isn't quite right. Think: 12345-1234567-1",
-        "CNIC needs to be in this format: 12345-1234567-1. Give it another shot!",
-        "Quick fix needed: Make sure your CNIC looks like 12345-1234567-1"
+        "Hold up! That CNIC format isn't quite right. It should be 13 digits, no dashes (e.g. 1234512345671)",
+        "CNIC needs to be 13 digits, no dashes. Give it another shot!",
+        "Quick fix needed: Make sure your CNIC is 13 digits, no dashes (e.g. 1234512345671)"
     ],
     "phone": [
         "Almost there! Just need your phone number like this: 03001234567",
@@ -53,7 +53,7 @@ def validate_name(name: str) -> bool:
     return bool(re.match(NAME_PATTERN, name))
 
 def validate_cnic(cnic: str) -> bool:
-    """Validate CNIC format"""
+    """Validate CNIC format: 13 digits, no dashes"""
     return bool(re.match(CNIC_PATTERN, cnic))
 
 def validate_phone(phone: str) -> bool:

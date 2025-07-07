@@ -37,9 +37,9 @@ STEP_GUIDANCE = {
         "Let's get you registered! Your name, please?"
     ],
     "cnic": [
-        "Great! Now I'll need your CNIC number (format: 12345-1234567-1)",
-        "Could you share your CNIC? Make sure it's in the format 12345-1234567-1",
-        "Next up: your CNIC number please (12345-1234567-1 format)"
+        "Great! Now I'll need your CNIC number (13 digits, no dashes, e.g. 1234512345671)",
+        "Could you share your CNIC? Make sure it's 13 digits, no dashes (e.g. 1234512345671)",
+        "Next up: your CNIC number please (13 digits, no dashes, e.g. 1234512345671)"
     ],
     "phone": [
         "Almost there! What's the best number to reach you at?",

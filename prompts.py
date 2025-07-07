@@ -145,18 +145,18 @@ CONFIRMATION_MESSAGES = {
 
 ERROR_RESPONSES = {
     "cnic_invalid": [
-        "🤖 Format rebel alert! CNIC needs to be: 12345-1234567-1. Try again!",
-        "⚠️ Close, but even rebels follow some rules! Format: 12345-1234567-1",
-        "🎯 CNIC format missed the mark! Aim for: 12345-1234567-1",
-         "📜 Sir Carr would've rejected this with a fountain pen. We just need: 12345-1234567-1",
-        "🎩 That CNIC would give Sir Carr a paper cut. Format like a rebel: 12345-1234567-1",
-        "🕵️‍♂️ Sir Carr sniffed out bad formatting from a mile away. Fix it: 12345-1234567-1",
-        "🚧 Bureaucratic ghosts are groaning. CNIC format is: 12345-1234567-1",
-        "🧾 Your CNIC rebelled too hard – bring it back to this: 12345-1234567-1",
-        "🎯 Sir Carr used to triple-check this stuff. We just want: 12345-1234567-1",
-        "🔧 Technical hiccup! CNIC should look like: 12345-1234567-1",
-        "💡 Almost there, innovator! Correct format: 12345-1234567-1",
-        "🚀 Houston, we have a format problem! Need: 12345-1234567-1"
+        "🤖 Format rebel alert! CNIC needs to be 13 digits, no dashes (e.g. 1234512345671). Try again!",
+        "⚠️ Close, but even rebels follow some rules! Format: 13 digits, no dashes (e.g. 1234512345671)",
+        "🎯 CNIC format missed the mark! Aim for: 13 digits, no dashes (e.g. 1234512345671)",
+        "📜 Sir Carr would've rejected this with a fountain pen. We just need: 13 digits, no dashes (e.g. 1234512345671)",
+        "🎩 That CNIC would give Sir Carr a paper cut. Format like a rebel: 13 digits, no dashes (e.g. 1234512345671)",
+        "🕵️‍♂️ Sir Carr sniffed out bad formatting from a mile away. Fix it: 13 digits, no dashes (e.g. 1234512345671)",
+        "🚧 Bureaucratic ghosts are groaning. CNIC format is: 13 digits, no dashes (e.g. 1234512345671)",
+        "🧾 Your CNIC rebelled too hard – bring it back to this: 13 digits, no dashes (e.g. 1234512345671)",
+        "🎯 Sir Carr used to triple-checked this stuff. We just want: 13 digits, no dashes (e.g. 1234512345671)",
+        "🔧 Technical hiccup! CNIC should look like: 13 digits, no dashes (e.g. 1234512345671)",
+        "💡 Almost there, innovator! Correct format: 13 digits, no dashes (e.g. 1234512345671)",
+        "🚀 Houston, we have a format problem! Need: 13 digits, no dashes (e.g. 1234512345671)"
     ],
     
     "phone_invalid": [
@@ -316,7 +316,7 @@ RESPONSE BEHAVIOR RULES:
 
 VALIDATION_RULES = {
     "cnic": {
-        "pattern": r"^\d{5}-\d{7}-\d{1}$",
+        "pattern": r"^\d{13}$",
         "error_type": "cnic_invalid"
     },
     "phone": {
@@ -376,7 +376,7 @@ AI_RESPONSE_CONTEXT = {
     "name": {
         "intent": "request_name",
         "requirements": ["friendly", "casual", "innovative"],
-        "constraints": ["must_ask_name", "keep_brief"],
+        "constraints": ["must_ask_name", "keep_brief", "must_include_word:name"],
         "style": "tech_startup",
         "examples": [
             "What name should I add to our innovation roster?",
@@ -386,33 +386,33 @@ AI_RESPONSE_CONTEXT = {
     "cnic": {
         "intent": "request_id",
         "requirements": ["format_reminder", "casual_tone"],
-        "constraints": ["include_format", "maintain_flow"],
+        "constraints": ["include_format", "maintain_flow", "must_include_word:CNIC"],
         "format": "12345-1234567-1",
         "style": "helpful_rebel"
     },
     "phone": {
         "intent": "request_contact",
         "requirements": ["mobile_focus", "format_clarity"],
-        "constraints": ["show_format", "keep_casual"],
+        "constraints": ["show_format", "keep_casual", "must_include_word:phone"],
         "format": "03001234567",
         "style": "tech_savvy"
     },
     "host": {
         "intent": "find_contact",
         "requirements": ["team_spirit", "internal_reference"],
-        "constraints": ["ask_host", "maintain_culture"],
+        "constraints": ["ask_host", "maintain_culture", "must_include_word:host"],
         "style": "collaborative"
     },
     "purpose": {
         "intent": "visit_reason",
         "requirements": ["open_ended", "encouraging"],
-        "constraints": ["get_purpose", "stay_professional"],
+        "constraints": ["get_purpose", "stay_professional", "must_include_word:purpose"],
         "style": "innovative"
     },
     "group_size": {
         "intent": "get_count",
         "requirements": ["numeric_response", "range_reminder"],
-        "constraints": ["1_to_10", "keep_casual"],
+        "constraints": ["1_to_10", "keep_casual", "must_include_word:group"],
         "format": "(1-10)",
         "style": "team_focused"
     }

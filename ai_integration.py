@@ -547,11 +547,18 @@ STRICT RULES:
 - NEVER use labels, preambles, or instructions like "Please enter", "Type your answer", "Your response:", "Here is your question:", etc.
 - NEVER output anything except the question itself.
 - Each question must be unique, context-aware, and match the current step.
+- The question for the 'name' step must include the word "Name".
+- The question for the 'cnic' step must include the word "CNIC".
+- The question for the 'number' step must include the word "Mobile number".
+- The question for the 'host' step must include the word "Host".
+- The question for the 'purpose' step must include the word "Purpose".
 
 EXAMPLES (DO output like this):
-- "Ready to disrupt the ordinary? Drop your alias, rebel!"
-- "Who's your partner in innovation at DPL headquarters?"
-- "What’s your moniker for today’s rebellion?"
+- "Ready to disrupt the ordinary? Drop your name, rebel!"
+- "Who's your host at DPL headquarters?"
+- "What’s your name for today’s rebellion?"
+- "What's your CNIC for the rebel records?"
+- "What's the purpose of your visit to DPL?"
 
 EXAMPLES (DO NOT output like this):
 - "Please enter your name:"

@@ -379,7 +379,7 @@ class DPLReceptionist:
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 supplier_list = "\n".join(f"{idx}. {supplier}" for idx, supplier in enumerate(SUPPLIERS, 1))
                 ai_msg = await self.get_ai_response(user_input, context)
-                return f"{ai_msg or get_dynamic_prompt('supplier', 'vendor')}\n\n{supplier_list}"
+                return f"{ai_msg if ai_msg else 'Sorry, something went wrong. Please try again.'}\n\n{supplier_list}"
             elif user_input in ["3", "prescheduled", "pre-scheduled", "pre scheduled", "i have a pre-scheduled meeting"]:
                 self.visitor_info.visitor_type = "prescheduled"
                 self.current_step = "scheduled_name"
@@ -402,7 +402,6 @@ class DPLReceptionist:
                 self.visitor_info.visitor_name = user_input.strip()
                 self.current_step = "cnic"
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                # Always use AI-generated prompt for guest flow questions
                 return await self.get_ai_response(user_input, context)
 
             elif self.current_step == "cnic":
@@ -424,86 +423,15 @@ class DPLReceptionist:
                 return await self.get_ai_response(user_input, context)
 
             elif self.current_step == "host":
-                if self.employee_selection_mode:
-                    if user_input.strip() == "0" or user_input.lower() == "none of these" or user_input.lower() == "none of these / enter a different name":
-                        self.employee_selection_mode = False
-                        self.employee_matches = []
-                        return "Please enter a different name."
-                    if user_input.isdigit():
-                        index = int(user_input) - 1
-                        if 0 <= index < len(self.employee_matches):
-                            selected_employee = self.employee_matches[index]
-                        else:
-                            selected_employee = None
-                    else:
-                        # If it's not a number, treat as a fresh host search
-                        self.employee_selection_mode = False
-                        self.employee_matches = []
-                        self.current_step = "host"
-                        return await self._run_guest_host_step(user_input)
-                    if selected_employee:
-                        # Store host information
-                        host_name = selected_employee["displayName"]
-                        host_email = selected_employee["email"]
-                        
-                        # Update all host-related fields
-                        self.visitor_info.host_confirmed = host_name
-                        self.visitor_info.host_email = host_email
-                        self.visitor_info.host_requested = host_name  # Also store as host_requested as backup
-                        
-                        # Detailed debug logging
-                        print(f"[DEBUG] Host selected and stored in visitor_info:")
-                        print(f"[DEBUG]   - host_confirmed: {self.visitor_info.host_confirmed}")
-                        print(f"[DEBUG]   - host_email: {self.visitor_info.host_email}")
-                        print(f"[DEBUG]   - host_requested: {self.visitor_info.host_requested}")
-                        
-                        # Update state
-                        self.employee_selection_mode = False
-                        self.employee_matches = []
-                        self.current_step = "purpose"
-                        
-                        # Make sure all host info is included in context
-                        context = {
-                            "current_step": self.current_step,
-                            **self.visitor_info.to_dict(),
-                            "host_confirmed": host_name,
-                            "host_email": host_email,
-                            "host_requested": host_name  # Include in context as well
-                        }
-                        # return get_dynamic_prompt("purpose", "guest")
-                        return await self.get_ai_response(user_input, context)
-                    else:
-                        options = "Please select one of these names:\n"
-                        for emp in self.employee_matches:
-                            dept = emp.get("department", "Unknown Department")
-                            options += f"{emp['displayName']} ({dept})\n"
-                        options += "None of these / Enter a different name"
-                        return options
-                else:
-                    if user_input.strip() == "0" or user_input.strip().lower().startswith("none of these"):
-                        self.employee_selection_mode = False
-                        self.employee_matches = []
-                        return "Please enter a different name."
-                    employee = await self.ai.search_employee(user_input)
-                    if isinstance(employee, dict):
-                        self.employee_selection_mode = True
-                        self.employee_matches = [employee]
-                        options = "I found the following match. Please select by number:\n"
-                        dept = employee.get("department", "Unknown Department")
-                        options += f"  1. {employee['displayName']} ({dept})\n"
-                        options += "  0. None of these / Enter a different name"
-                        return options
-                    elif isinstance(employee, list):
-                        self.employee_selection_mode = True
-                        self.employee_matches = employee
-                        options = "I found multiple potential matches. Please select one:\n"
-                        for i, emp in enumerate(employee, 1):
-                            dept = emp.get("department", "Unknown Department")
-                            options += f"  {i}. {emp['displayName']} ({dept})\n"
-                        options += "  0. None of these / Enter a different name"
-                        return options
-                    else:
-                        return "No matches found. Please enter a different name."
+                # Only take the host name as free text, require at least two words
+                host_name = user_input.strip()
+                if not host_name or len(host_name.split()) < 2:
+                    return "No shortcuts in the revolution! Drop the full name of your host—first and last."
+                self.visitor_info.host_confirmed = host_name
+                self.visitor_info.host_requested = host_name
+                self.current_step = "purpose"
+                context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
+                return await self.get_ai_response(user_input, context)
 
             elif self.current_step == "purpose":
                 if not user_input.strip():
@@ -511,67 +439,58 @@ class DPLReceptionist:
                 self.visitor_info.purpose = user_input.strip()
                 self.current_step = "confirm"
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                # Confirmation is not a question, so keep as is
+                # Use fallback for host display
+                host_display = self.visitor_info.host_confirmed or self.visitor_info.host_requested or "(Unknown Host)"
                 summary = f"Name: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
-                if self.visitor_info.host_confirmed:
-                    summary += f"\nHost: {self.visitor_info.host_confirmed}"
+                summary += f"\nHost: {host_display}"
                 if self.visitor_info.purpose:
                     summary += f"\nPurpose: {self.visitor_info.purpose}"
                 confirm_msg = get_confirmation_message().format(details=summary)
                 return confirm_msg
 
             elif self.current_step == "confirm":
+                # Use fallback for host display
+                host_display = self.visitor_info.host_confirmed or self.visitor_info.host_requested or "(Unknown Host)"
                 summary = f"Name: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
-                if self.visitor_info.host_confirmed:
-                    summary += f"\nHost: {self.visitor_info.host_confirmed}"
+                summary += f"\nHost: {host_display}"
                 if self.visitor_info.purpose:
                     summary += f"\nPurpose: {self.visitor_info.purpose}"
                 confirm_msg = get_confirmation_message().format(details=summary)
                 if user_input.lower() == "confirm":
                     self.current_step = "complete"
-                    print(f"[DEBUG] Saving guest: host_confirmed={self.visitor_info.host_confirmed}")
-                    # Handle host name with detailed logging
-                    host_name = None
-                    
-                    # Try host_confirmed first
-                    if self.visitor_info.host_confirmed:
-                        host_name = self.visitor_info.host_confirmed
-                        print(f"[DEBUG] Using host_confirmed: {host_name}")
-                    
-                    # Fall back to host_requested if needed
-                    elif self.visitor_info.host_requested:
-                        host_name = self.visitor_info.host_requested
-                        print(f"[DEBUG] Using host_requested as fallback: {host_name}")
-                    
-                    # Final fallback
-                    if not host_name:
-                        print("[WARN] No host name found in either host_confirmed or host_requested")
-                        host_name = ""
-                    
-                    print(f"[DEBUG] Final host name for database: {host_name}")
-                    
                     # Save to database
                     await insert_visitor_to_db(
                         visitor_type=self.visitor_info.visitor_type or "guest",
                         full_name=self.visitor_info.visitor_name or "",
                         cnic=self.visitor_info.visitor_cnic or "",
                         phone=self.visitor_info.visitor_phone or "",
-                        host=host_name,
+                        host=self.visitor_info.host_confirmed or self.visitor_info.host_requested or "",
                         purpose=self.visitor_info.purpose or "",
                         is_group_visit=self.visitor_info.is_group_visit,
                         group_members=self.visitor_info.group_members,
                         total_members=self.visitor_info.total_members
                     )
+                    # Send notification to admin only (not host)
                     try:
                         if self.ai.graph_client is not None:
-                            await self.ai.schedule_meeting(
-                                self.visitor_info.host_email,
-                                self.visitor_info.visitor_name,
-                                self.visitor_info.visitor_phone,
-                                self.visitor_info.purpose
+                            access_token = self.ai.get_system_account_token()
+                            system_user_id = await self.ai.get_user_id("saadsaad@dpl660.onmicrosoft.com", access_token)
+                            admin_user_id = await self.ai.get_user_id("admin_IT@dpl660.onmicrosoft.com", access_token)
+                            chat_id = await self.ai.create_or_get_chat(admin_user_id, system_user_id, access_token)
+                            # --- Use host_confirmed if set, else fallback to host_requested (entered by guest)
+                            host_display = self.visitor_info.host_confirmed or self.visitor_info.host_requested or "(Unknown Host)"
+                            purpose_display = self.visitor_info.purpose or "(No Purpose)"
+                            message = (
+                                "🚨 <b>Guest Arrival Notification</b><br><br>"
+                                "A guest has stormed the gates. Here are the details:<br><br>"
+                                f"👤 Name: {self.visitor_info.visitor_name}<br>"
+                                f"📞 Phone: {self.visitor_info.visitor_phone}<br>"
+                                f"🤝 Host: {host_display}<br>"
+                                f"🎯 Purpose: {purpose_display}"
                             )
+                            await self.ai.send_message_to_host(chat_id, access_token, message)
                     except Exception as e:
-                        print(f"Error scheduling meeting: {e}")
+                        print(f"Error in Teams notification process: {e}")
                     context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                     return await self.get_ai_response(user_input, context)
                 elif user_input.lower() == "edit":
@@ -582,10 +501,9 @@ class DPLReceptionist:
                     return confirm_msg
 
             elif self.current_step == "complete":
-                # Set registration_completed for frontend
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 context["registration_completed"] = True
-                return "Registration successful. Rebel presence incoming — host’s been warned."
+                return "Registration successful. Rebel presence incoming — admin has been notified."
 
         # Vendor flow (strict, only hardcoded prompts, strict step order)
         if self.visitor_info.visitor_type == "vendor":
@@ -600,25 +518,29 @@ class DPLReceptionist:
                     if selected == "Other":
                         self.current_step = "supplier_other"
                         context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                        return get_dynamic_prompt("supplier_other", "vendor")
+                        ai_msg = await self.get_ai_response(user_input, context)
+                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                     else:
                         self.visitor_info.supplier = selected
                         self.current_step = "vendor_name"
                         context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                        return get_dynamic_prompt("vendor_name", "vendor")
+                        ai_msg = await self.get_ai_response(user_input, context)
+                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 elif user_input.strip() in SUPPLIERS:
                     if user_input.strip() == "Other":
                         self.current_step = "supplier_other"
                         context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                        return get_dynamic_prompt("supplier_other", "vendor")
+                        ai_msg = await self.get_ai_response(user_input, context)
+                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                     else:
                         self.visitor_info.supplier = user_input.strip()
                         self.current_step = "vendor_name"
                         context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                        return get_dynamic_prompt("vendor_name", "vendor")
+                        ai_msg = await self.get_ai_response(user_input, context)
+                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 else:
                     ai_msg = await self.get_ai_response(user_input, {**context, "validation_error": "invalid_supplier"})
-                    return f"{ai_msg or get_dynamic_prompt('supplier', 'vendor')}\n{supplier_list}"
+                    return f"{ai_msg if ai_msg else 'Sorry, something went wrong. Please try again.'}\n{supplier_list}"
             elif self.current_step == "supplier_other":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 if not user_input.strip():
@@ -626,7 +548,8 @@ class DPLReceptionist:
                 self.visitor_info.supplier = user_input.strip()
                 self.current_step = "vendor_name"
                 context["current_step"] = self.current_step
-                return get_dynamic_prompt("vendor_name", "vendor")
+                ai_msg = await self.get_ai_response(user_input, context)
+                return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
             elif self.current_step == "vendor_name":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 if not user_input.strip():
@@ -636,7 +559,8 @@ class DPLReceptionist:
                 self.visitor_info.visitor_name = user_input.strip()
                 self.current_step = "vendor_group_size"
                 context["current_step"] = self.current_step
-                return get_dynamic_prompt("vendor_group_size", "vendor")
+                ai_msg = await self.get_ai_response(user_input, context)
+                return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
             elif self.current_step == "vendor_group_size":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 try:
@@ -651,7 +575,8 @@ class DPLReceptionist:
                         self.visitor_info.group_id = str(datetime.now(timezone.utc).timestamp())
                     self.current_step = "vendor_cnic"
                     context["current_step"] = self.current_step
-                    return get_dynamic_prompt("vendor_cnic", "vendor")
+                    ai_msg = await self.get_ai_response(user_input, context)
+                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 except ValueError:
                     return get_error_message("invalid_choice")
             elif self.current_step == "vendor_cnic":
@@ -661,7 +586,8 @@ class DPLReceptionist:
                 self.visitor_info.visitor_cnic = user_input.strip()
                 self.current_step = "vendor_phone"
                 context["current_step"] = self.current_step
-                return get_dynamic_prompt("vendor_phone", "vendor")
+                ai_msg = await self.get_ai_response(user_input, context)
+                return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
             elif self.current_step == "vendor_phone":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 if not validate_phone(user_input.strip()):
@@ -672,7 +598,8 @@ class DPLReceptionist:
                     self.current_step = f"vendor_member_{next_member}_name"
                     context["current_step"] = self.current_step
                     context["next_member"] = next_member
-                    return get_dynamic_prompt("vendor_member_name", "vendor").replace("{number}", str(next_member))
+                    ai_msg = await self.get_ai_response(user_input, context)
+                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 self.current_step = "vendor_confirm"
                 context["current_step"] = self.current_step
                 summary = f"Supplier: {self.visitor_info.supplier}\nName: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
@@ -680,6 +607,7 @@ class DPLReceptionist:
                     summary += f"\nGroup size: {self.visitor_info.total_members}"
                     for idx, member in enumerate(self.visitor_info.group_members, 2):
                         summary += f"\nMember {idx}: {member.get('name','')} / {member.get('cnic','')} / {member.get('phone','')}"
+
                 confirm_msg = get_confirmation_message().format(details=summary)
                 return confirm_msg
             elif self.current_step.startswith("vendor_member_"):
@@ -697,14 +625,16 @@ class DPLReceptionist:
                     self.visitor_info.group_members.append({"name": user_input.strip()})
                     self.current_step = f"vendor_member_{member_num}_cnic"
                     context["current_step"] = self.current_step
-                    return get_dynamic_prompt("vendor_member_cnic", "vendor").replace("{number}", str(member_num))
+                    ai_msg = await self.get_ai_response(user_input, context)
+                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 elif substep == "cnic":
                     if not validate_cnic(user_input.strip()):
                         return get_error_message("cnic_invalid")
                     self.visitor_info.group_members[member_num-2]["cnic"] = user_input.strip()
                     self.current_step = f"vendor_member_{member_num}_phone"
                     context["current_step"] = self.current_step
-                    return get_dynamic_prompt("vendor_member_phone", "vendor").replace("{number}", str(member_num))
+                    ai_msg = await self.get_ai_response(user_input, context)
+                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                 elif substep == "phone":
                     if not validate_phone(user_input.strip()):
                         return get_error_message("phone_invalid")
@@ -713,7 +643,8 @@ class DPLReceptionist:
                         next_member = len(self.visitor_info.group_members) + 2
                         self.current_step = f"vendor_member_{next_member}_name"
                         context["current_step"] = self.current_step
-                        return get_dynamic_prompt("vendor_member_name", "vendor").replace("{number}", str(next_member))
+                        ai_msg = await self.get_ai_response(user_input, context)
+                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
                     else:
                         self.current_step = "vendor_confirm"
                         context["current_step"] = self.current_step
@@ -748,17 +679,17 @@ class DPLReceptionist:
                         # --- Use HTML for Teams notification, like pre-scheduled ---
                         message = (
                             "🔔 <b>Vendor Arrival Notification</b><br><br>"
-                            "A vendor has arrived at reception. Here are the details:<br><br>"
-                            f"👤 Name: {self.visitor_info.visitor_name}<br>"
-                            f"🏢 Supplier: {self.visitor_info.supplier}<br>"
-                            f"🆔 CNIC: {self.visitor_info.visitor_cnic}<br>"
-                            f"📞 Phone: {self.visitor_info.visitor_phone}"
+    "A vendor has arrived at reception. Here are the details:<br><br>"
+    f"👤 Name: {self.visitor_info.visitor_name}<br>"
+    f"🏢 Supplier: {self.visitor_info.supplier}<br>"
+    f"🆔 CNIC: {self.visitor_info.visitor_cnic}<br>"
+    f"📞 Phone: {self.visitor_info.visitor_phone}"
                         )
                         if self.visitor_info.is_group_visit:
                             message += f"<br>👥 Group size: {self.visitor_info.total_members}"
                             for idx, member in enumerate(self.visitor_info.group_members, 2):
                                 message += (
-    f"<br>Member {idx}:<br>"
+     f"<br>Member {idx}:<br>"
     f"&nbsp;&nbsp;👤 Name: {member.get('name','')}<br>"
     f"&nbsp;&nbsp;🆔 CNIC: {member.get('cnic','')}<br>"
     f"&nbsp;&nbsp;📞 Phone: {member.get('phone','')}"
@@ -766,12 +697,13 @@ class DPLReceptionist:
                         await self.ai.send_message_to_host(chat_id, access_token, message)
                     except Exception as e:
                         print(f"Error in Teams notification process: {e}")
-                    return "Registration successful. Rebel presence incoming — host’s been warned"
+                    return "Registration successful. Rebel presence incoming — admin has been warned"
                 elif user_input.lower() == "edit":
                     self.current_step = "supplier"
                     context["current_step"] = self.current_step
                     supplier_list = "\n".join(f"{idx}. {supplier}" for idx, supplier in enumerate(SUPPLIERS, 1))
-                    return f"{get_dynamic_prompt('supplier', 'vendor')}\n{supplier_list}"
+                    ai_msg = await self.get_ai_response(user_input, context)
+                    return f"{ai_msg if ai_msg else 'Sorry, something went wrong. Please try again.'}\n{supplier_list}"
                 else:
                     summary = f"Supplier: {self.visitor_info.supplier}\nName: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
                     if self.visitor_info.is_group_visit:
@@ -781,7 +713,7 @@ class DPLReceptionist:
                     confirm_msg = get_confirmation_message().format(details=summary)
                     return confirm_msg
             elif self.current_step == "complete":
-                return "Registration successful. Rebel presence incoming — host’s been warned"
+                return "Registration successful. Rebel presence incoming — admin has been warned"
 
         # Generate AI response for the current step
         context = {
@@ -1019,7 +951,7 @@ class DPLReceptionist:
                         )
                     except Exception as e:
                         print(f"Error scheduling meeting: {e}")
-                    return "Registration successful. Rebel presence incoming — host’s been warned"
+                    return "Registration successful. Rebel presence incoming — admin has been warned"
             elif user_input.strip().lower() == "back":
                 self.current_step = "scheduled_host"
                 return "Please enter the name of the person you're scheduled to meet with."

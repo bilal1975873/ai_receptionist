@@ -235,19 +235,6 @@ ERROR_RESPONSES = {
 # ========== Static Prompts (for formal flows) ==========
 
 STATIC_PROMPTS = {
-    # Vendor flow - keep professional
-    "supplier": "Please select your supplier from the list:",
-    "supplier_other": "Please enter your supplier name:",
-    "vendor_name": "Please enter your full name:",
-    "vendor_group_size": "Enter group size (1-10):",
-    "vendor_cnic": "Enter CNIC (Format: 1234512345671):",
-    "vendor_phone": "Enter phone number (Format: 03001234567):",
-    "vendor_member_name": "Enter member {number} name:",
-    "vendor_member_cnic": "Enter member {number} CNIC (Format: 1234512345671):", 
-    "vendor_member_phone": "Enter member {number} phone (Format: 03001234567):",
-    "vendor_confirm": "Please review and type 'confirm' to proceed or 'edit' to make changes:",
-    "vendor_notify": "Your registration is complete. An admin has been notified.",
-    
     # Pre-scheduled flow - keep professional
     "scheduled_name": "Please enter your name:",
     "scheduled_cnic": "Enter CNIC (Format: 1234512345671):",
@@ -292,12 +279,12 @@ def generate_dynamic_ai_prompt(step_name: str, flow_type: str = "guest", context
 # Update get_dynamic_prompt to use AI generation
 def get_dynamic_prompt(step_name: str, flow_type: str = "guest", context: dict = None) -> str:
     """
-    Always generate guest flow questions dynamically using AI. For guest flow, this function should not return any placeholder or static text.
-    For other flows, static prompts may still be used.
+    Always generate guest and vendor flow questions dynamically using AI. For guest and vendor flows, this function should not return any placeholder or static text.
+    For scheduled flow, static prompts may still be used.
     """
-    if flow_type == "guest":
+    if flow_type in ("guest", "vendor"):
         return None  # Do not call generate_dynamic_ai_prompt, let backend handle AI
-    # For other flows, keep static prompt logic
+    # For scheduled flow, keep static prompt logic
     if step_name in STATIC_PROMPTS:
         return STATIC_PROMPTS[step_name]
     return f"Please provide {step_name}:"

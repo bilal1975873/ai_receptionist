@@ -24,12 +24,12 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
   const lines = safeContent.split('\n');
   const options = lines.filter(line => line.match(/^\d+\./));
   const isEmployeeSelection = lines[0]?.toLowerCase().includes('found') && lines[0]?.toLowerCase().includes('match');
+  // Show green button for any 'complete' step, including early arrival
   const isCompletionMessage = message.type === 'bot' && (
     safeContent.toLowerCase().includes('registration is complete') ||
-    (
-      safeContent.toLowerCase().includes('registration successful') &&
-      safeContent.toLowerCase().includes('rebel presence incoming')
-    )
+    safeContent.toLowerCase().includes('registration successful') ||
+    safeContent.toLowerCase().includes('start new registration') ||
+    safeContent.toLowerCase().includes('please come back within 30 minutes before your scheduled time')
   );
 
   // Convert employee names into numbered options

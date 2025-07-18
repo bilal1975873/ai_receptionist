@@ -52,9 +52,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, className = '',
     }]
     : [];
   
-  const prompt = isEmployeeSelection ?
-    lines[0] :
-    lines.filter(line => !line.match(/^\d+\./) && line.trim() !== '').join(' ');
+  // Always use the first non-empty, non-numbered line as the main prompt (AI response)
+  const prompt = lines.find(line => line.trim() && !line.match(/^\d+\./)) || safeContent;
   
   // Check if this is a confirmation message
   const isConfirmation = isBot && (

@@ -14,7 +14,6 @@ from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
 from msgraph import GraphServiceClient
 from azure.core.credentials import AccessToken
-from fuzzywuzzy import fuzz
 from prompts import SYSTEM_PERSONALITY, FLOW_CONSTRAINTS, get_dynamic_prompt, get_confirmation_message, get_error_message, STATIC_PROMPTS, generate_dynamic_ai_prompt
 from flows import (
     validate_name, 
@@ -340,34 +339,31 @@ class AIReceptionist:
                 
             # If no exact match, try fuzzy matching
             # print("[DEBUG] No exact match found, trying fuzzy matching...")
-            for user in result.value:
-                if not user.display_name or not user.mail:
-                    continue
-                    
-                display_name = user.display_name.lower()
-                name_parts = display_name.split()
-                
-                # Different scoring methods
-                scores = [
-                    fuzz.ratio(search_name, display_name),  # Exact match score
-                    fuzz.partial_ratio(search_name, display_name),  # Partial match score
-                    fuzz.token_sort_ratio(search_name, display_name),  # Word order independent score
-                    max((fuzz.ratio(search_name, part) for part in name_parts), default=0)  # Best single word match
-                ]
-                
-                # Take highest score from any method
-                best_score = max(scores)
-                
-                if best_score >= 60:  # Threshold for considering it a match
-                    # print(f"[DEBUG] Found fuzzy match: {user.display_name} (score: {best_score})")
-                    matches.append({
-                        "displayName": user.display_name,
-                        "email": user.mail,
-                        "department": user.department or 'Unknown Department',
-                        "jobTitle": user.job_title or 'Unknown Title',
-                        "id": user.id,
-                        "score": best_score
-                    })
+            # Fuzzy matching removed as per security/requirements
+            # for user in result.value:
+            #     if not user.display_name or not user.mail:
+            #         continue
+            #     display_name = user.display_name.lower()
+            #     name_parts = display_name.split()
+            #     # Different scoring methods
+            #     scores = [
+            #         fuzz.ratio(search_name, display_name),  # Exact match score
+            #         fuzz.partial_ratio(search_name, display_name),  # Partial match score
+            #         fuzz.token_sort_ratio(search_name, display_name),  # Word order independent score
+            #         max((fuzz.ratio(search_name, part) for part in name_parts), default=0)  # Best single word match
+            #     ]
+            #     # Take highest score from any method
+            #     best_score = max(scores)
+            #     if best_score >= 60:  # Threshold for considering it a match
+            #         # print(f"[DEBUG] Found fuzzy match: {user.display_name} (score: {best_score})")
+            #         matches.append({
+            #             "displayName": user.display_name,
+            #             "email": user.mail,
+            #             "department": user.department or 'Unknown Department',
+            #             "jobTitle": user.job_title or 'Unknown Title',
+            #             "id": user.id,
+            #             "score": best_score
+            #         })
 
             # Sort matches by score
             matches.sort(key=lambda x: x["score"], reverse=True)
@@ -520,14 +516,8 @@ class AIReceptionist:
                 if interaction_count > 3:
                     prompt += "\nUser has been interacting for a while. Keep them engaged with encouraging responses.\n"
             elif flow_type == 'vendor':
-                # For vendor flow, keep using step prompts directly without AI generation
-                prompt_text = get_dynamic_prompt(current_step, flow_type)
-                if prompt_text:
-                    if current_step.startswith('vendor_member_'):
-                        member_num = formatted_context.get("member_number", "")
-                        prompt_text = prompt_text.replace("{number}", str(member_num))
-                    return prompt_text
-                return self._get_fallback_response(current_step, formatted_context)
+                # For vendor flow, use AI-generated prompts just like guest flow
+                pass  # No special-casing; let the AI handle the prompt
             elif flow_type == 'prescheduled':
                 prompt += "\nCurrent flow: Pre-scheduled meeting - Verifying appointment\n"
                 
@@ -547,11 +537,13 @@ STRICT RULES:
 - NEVER use labels, preambles, or instructions like "Please enter", "Type your answer", "Your response:", "Here is your question:", etc.
 - NEVER output anything except the question itself.
 - Each question must be unique, context-aware, and match the current step.
-- The question for the 'name' step must include the word "Name".
+- The question for the 'name' step must include the word "name".
 - The question for the 'cnic' step must include the word "CNIC".
-- The question for the 'number' step must include the word "Mobile number".
-- The question for the 'host' step must include the word "Host".
-- The question for the 'purpose' step must include the word "Purpose".
+- The question for the 'number' step must include the word "mobile number".
+- The question for the 'host' step must include the word "host" and must explicitly ask for the full name (first and last name) of the host.
+- The question for the 'purpose' step must include the word "purpose".
+- The question for the 'group size' step must include the phrase "group size".
+- The question for the 'supplier name' step must include the phrase "supplier name".
 
 EXAMPLES (DO output like this):
 - "Ready to disrupt the ordinary? Drop your name, rebel!"
@@ -664,17 +656,17 @@ Assistant:
                     return self._get_fallback_response(current_step, formatted_context)
                 print(f"[DEBUG] Final AI response to frontend: {generation}")
                 # For vendor flow, always use step prompts directly
-                if current_step.startswith('vendor_'):
-                    prompt_text = get_dynamic_prompt(current_step, flow_type)
-                    if not prompt_text:
-                        print(f"[ERROR] No step prompt found for {current_step}")
-                        return self._get_fallback_response(current_step, formatted_context)
-                        
-                    # Handle member number replacement
-                    if current_step.startswith('vendor_member_'):
-                        member_num = formatted_context.get("member_number", "")
-                        return prompt_text.replace("{number}", str(member_num))
-                    return prompt_text
+                # (REMOVED) Now vendor flow uses AI-generated prompts like guest flow
+                # if current_step.startswith('vendor_'):
+                #     prompt_text = get_dynamic_prompt(current_step, flow_type)
+                #     if not prompt_text:
+                #         print(f"[ERROR] No step prompt found for {current_step}")
+                #         return self._get_fallback_response(current_step, formatted_context)
+                #     # Handle member number replacement
+                #     if current_step.startswith('vendor_member_'):
+                #         member_num = formatted_context.get("member_number", "")
+                #         return prompt_text.replace("{number}", str(member_num))
+                #     return prompt_text
                         
                 # Use the step prompts for other flows
                 prompt_text = get_dynamic_prompt(current_step, flow_type)
@@ -1132,10 +1124,10 @@ Assistant:
             response = requests.get(url, headers=headers)
 
             print(f"[DEBUG] Response status: {response.status_code}")
-            try:
-                print(f"[DEBUG] Response JSON: {json.dumps(response.json(), indent=2)}")
-            except Exception as e:
-                print(f"[ERROR] Could not parse JSON: {e}")
+            # try:
+            #     print(f"[DEBUG] Response JSON: {json.dumps(response.json(), indent=2)}")
+            # except Exception as e:
+            #     print(f"[ERROR] Could not parse JSON: {e}")
 
             if response.status_code == 200:
                 events = response.json().get("value", [])

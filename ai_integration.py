@@ -567,6 +567,10 @@ If you break these rules, you will be penalized. Output ONLY the question, nothi
                 step_rule = (
                     "RULE: Ask the guest, in a rebellious and fun style, for the name of the person they are here to see. Do not output anything else."
                 )
+            elif current_step == "vendor_name":
+                step_rule = (
+                    "RULE: When asking for the vendor's name, you MUST use the word 'name' in your question."
+                )
             # formatted_prompt = f"""<|im_start|>system\n{rebel_instruction}\n{step_rule}\nCurrent context:\nStep: {current_step}\n{formatted_context}\n\nUser message: {user_input}\n\n{FLOW_CONSTRAINTS}"""
             formatted_prompt = f"""
 Human: You are DPL's AI receptionist. Your ONLY job is to output a single, direct, creative, and witty question for the user, in a rebellious, anti-corporate style.

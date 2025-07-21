@@ -236,10 +236,7 @@ ERROR_RESPONSES = {
 
 STATIC_PROMPTS = {
     # Pre-scheduled flow - keep professional
-    "scheduled_name": "Please enter your name:",
-    "scheduled_cnic": "Enter CNIC (Format: 1234512345671):",
-    "scheduled_phone": "Please provide your contact number:",
-    "scheduled_email": "Please enter your email address:",
+    # Removed hardcoded prompts for pre-scheduled flow steps. Only AI-generated responses will be used.
     "scheduled_host": "Please enter the name of the person you're scheduled to meet with:",
     "scheduled_confirm": "Please review your scheduled meeting details.\n\nType 'confirm' to proceed, 'back' to re-enter host, or '1' to continue as a regular guest:",
     "scheduled_confirm_found": "Found your scheduled meeting:\nTime: {time}\nPurpose: {purpose}\n\nType 'confirm' to proceed or 'back' to re-enter the host name."

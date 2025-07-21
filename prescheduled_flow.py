@@ -9,6 +9,60 @@ import hashlib
 import uuid
 
 class PreScheduledFlow:
+    async def _get_ai_prompt_for_step(self, step: str) -> str:
+        """Generate a rebel, anti-corporate, context-aware prompt for each step using AI. Host-related fields are excluded from context."""
+        context = {
+            "visitor_type": "prescheduled",
+            "current_step": step,
+            "visitor_name": self.visitor_info.get("visitor_name", ""),
+            "visitor_cnic": self.visitor_info.get("visitor_cnic", ""),
+            "visitor_phone": self.visitor_info.get("visitor_phone", ""),
+            "visitor_email": self.visitor_info.get("visitor_email", ""),
+            # Host-related fields are intentionally excluded to prevent AI from hallucinating a host step
+        }
+        # Custom instruction for each step
+        if step == "scheduled_name":
+            context["custom_instruction"] = (
+                "You are DPL's rebel, anti-corporate AI receptionist. Ask the visitor for their name. "
+                "The question must include the word 'name', be witty, bold, and never bureaucratic. "
+                "Do not use any preamble or label, just the question."
+            )
+        elif step == "scheduled_cnic":
+            context["custom_instruction"] = (
+                "You are DPL's rebel, anti-corporate AI receptionist. Ask the visitor for their CNIC. "
+                "The question must include the word 'CNIC', be witty, bold, and never bureaucratic. "
+                "Do not use any preamble or label, just the question."
+            )
+        elif step == "scheduled_phone":
+            context["custom_instruction"] = (
+                "You are DPL's rebel, anti-corporate AI receptionist. Ask the visitor for their mobile number. "
+                "The question must include the word 'number', be witty, bold, and never bureaucratic. "
+                "Do not use any preamble or label, just the question."
+            )
+        elif step == "scheduled_email":
+            # Reset context to bare minimum for email step
+            context = {
+                "current_step": "email",  # Simplified step name
+                "format_required": True,
+                "custom_instruction": (
+                    "OUTPUT ONLY ONE OF THESE EXACT QUESTIONS:\n"
+                    "'What is your email address?'\n"
+                    "'Please enter your email address.'\n"
+                    "'Your email address?'\n"
+                    "DO NOT OUTPUT ANYTHING ELSE. NO CREATIVITY. NO MODIFICATIONS."
+                )
+            }
+        else:
+            context["custom_instruction"] = (
+                "You are DPL's rebel, anti-corporate AI receptionist. Ask for the next required info in the pre-scheduled flow. "
+                "Be witty, bold, and never bureaucratic. Do not use any preamble or label, just the question."
+            )
+        # Debug log: print the context being sent to Bedrock
+        #print(f"[DEBUG][AI_PROMPT_CONTEXT][{step}] Context sent to Bedrock: {context}")
+        # Use the AI to generate the prompt
+        return await asyncio.get_event_loop().run_in_executor(
+            None, lambda: self.ai.process_visitor_input("", context)
+        )
     def __init__(self, ai: AIReceptionist):
         self.ai = ai
         self.current_step = "scheduled_name"
@@ -110,8 +164,9 @@ class PreScheduledFlow:
                 return get_error_message("name_invalid")
             self.visitor_info["visitor_name"] = user_input.strip()
             self.current_step = "scheduled_cnic"
-            return "Please provide your CNIC number in the format: 1234512345671."
-        
+            ai_prompt = await self._get_ai_prompt_for_step("scheduled_cnic")
+            # Always return only the AI prompt, never fallback
+            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
         # Step 2: CNIC
         elif self.current_step == "scheduled_cnic":
             if not user_input.strip():
@@ -120,8 +175,8 @@ class PreScheduledFlow:
                 return get_error_message("cnic_invalid")
             self.visitor_info["visitor_cnic"] = user_input.strip()
             self.current_step = "scheduled_phone"
-            return "Please provide your phone number in the format: 03001234567."
-        
+            ai_prompt = await self._get_ai_prompt_for_step("scheduled_phone")
+            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
         # Step 3: Phone
         elif self.current_step == "scheduled_phone":
             if not user_input.strip():
@@ -130,8 +185,8 @@ class PreScheduledFlow:
                 return get_error_message("phone_invalid")
             self.visitor_info["visitor_phone"] = user_input.strip()
             self.current_step = "scheduled_email"
-            return "Please provide your email address."
-        
+            ai_prompt = await self._get_ai_prompt_for_step("scheduled_email")
+            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
         # Step 4: Email - Now directly checks meetings across all host calendars
         elif self.current_step == "scheduled_email":
             if not user_input.strip():
@@ -141,8 +196,6 @@ class PreScheduledFlow:
             self.visitor_info["visitor_email"] = user_input.strip()
             print(f"[DEBUG] Email set to: '{self.visitor_info['visitor_email']}'")
             print(f"[DEBUG] visitor_info after email: {self.visitor_info}")
-            
-            # Directly check meetings across all host calendars
             self.current_step = "scheduled_meeting"
             return await self._check_meetings_across_hosts()
         
@@ -222,7 +275,8 @@ class PreScheduledFlow:
                 return "Registration successful. Rebel presence incoming — host's been warned"
             elif user_input.strip().lower() == "edit":
                 self.current_step = "scheduled_name"
-                return "Let's start over. Please enter your name."
+                # Return AI-generated prompt for name step
+                return await self._get_ai_prompt_for_step("scheduled_name")
             else:
                 meeting = self.visitor_info.get("scheduled_meeting")
                 return self._get_meeting_confirmation(meeting)

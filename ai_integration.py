@@ -544,6 +544,7 @@ STRICT RULES:
 - The question for the 'purpose' step must include the word "purpose".
 - The question for the 'group size' step must include the phrase "group size".
 - The question for the 'supplier name' step must include the phrase "supplier name".
+- The question for the 'email' step must include the word "email".
 
 EXAMPLES (DO output like this):
 - "Ready to disrupt the ordinary? Drop your name, rebel!"

@@ -40,16 +40,12 @@ class PreScheduledFlow:
                 "Do not use any preamble or label, just the question."
             )
         elif step == "scheduled_email":
-            # Reset context to bare minimum for email step
+            # Reset context to bare minimum for email step to avoid AI confusion
             context = {
                 "current_step": "email",  # Simplified step name
                 "format_required": True,
                 "custom_instruction": (
-                    "OUTPUT ONLY ONE OF THESE EXACT QUESTIONS:\n"
-                    "'What is your email address?'\n"
-                    "'Please enter your email address.'\n"
-                    "'Your email address?'\n"
-                    "DO NOT OUTPUT ANYTHING ELSE. NO CREATIVITY. NO MODIFICATIONS."
+                    "- The question for the 'email' step must include the word 'email'."
                 )
             }
         else:
@@ -678,14 +674,14 @@ class PreScheduledFlow:
         ADMIN_EMAIL = getattr(self.ai, 'admin_email', None) or 'admin_IT@dpl660.onmicrosoft.com'
         admin_user_id = await self.ai.get_user_id(ADMIN_EMAIL, access_token)
         chat_id = await self.ai.create_or_get_chat(admin_user_id, system_user_id, access_token)
-        # Compose message for admin
+        # Always set arrival_fmt using Asia/Karachi timezone
+        pk_tz = pytz.timezone('Asia/Karachi')
+        arrival_fmt = now.astimezone(pk_tz).strftime('%b %d, %I:%M %p')
         if arrival_status == "late":
-            pk_tz = pytz.timezone('Asia/Karachi')
             dt_start = parse(start)
             if dt_start.tzinfo is None:
                 dt_start = dt_start.replace(tzinfo=pytz.UTC)
             start_fmt_admin = dt_start.astimezone(pk_tz).strftime('%b %d, %I:%M %p')
-            arrival_fmt = now.astimezone(pk_tz).strftime('%b %d, %I:%M %p')
             visitor_name = self.visitor_info['visitor_name']
             visitor_email = self.visitor_info['visitor_email']
             admin_message = (
@@ -701,12 +697,10 @@ class PreScheduledFlow:
             await self.ai.send_message_to_host(chat_id, access_token, admin_message)
         elif arrival_status == "early":
             # Early arrival notification
-            pk_tz = pytz.timezone('Asia/Karachi')
             dt_start = parse(start)
             if dt_start.tzinfo is None:
                 dt_start = dt_start.replace(tzinfo=pytz.UTC)
             start_fmt_admin = dt_start.astimezone(pk_tz).strftime('%b %d, %I:%M %p')
-            arrival_fmt = now.astimezone(pk_tz).strftime('%b %d, %I:%M %p')
             visitor_name = self.visitor_info['visitor_name']
             visitor_email = self.visitor_info['visitor_email']
             admin_message = (

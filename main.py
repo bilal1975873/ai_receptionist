@@ -383,7 +383,12 @@ class DPLReceptionist:
             elif user_input in ["3", "prescheduled", "pre-scheduled", "pre scheduled", "i have a pre-scheduled meeting"]:
                 self.visitor_info.visitor_type = "prescheduled"
                 self.current_step = "scheduled_name"
-                return "Please enter your name."
+                # Use AI-generated prompt for the first step of prescheduled flow
+                flow = PreScheduledFlow(ai=ai_receptionist)
+                flow.current_step = "scheduled_name"
+                flow.visitor_info = self.visitor_info.to_dict() if hasattr(self.visitor_info, 'to_dict') else dict(self.visitor_info)
+                ai_prompt = await flow._get_ai_prompt_for_step("scheduled_name")
+                return ai_prompt
             else:
                 # Return standard error message for invalid input
                 return get_error_message("visitor_type")
@@ -1117,7 +1122,7 @@ async def process_message(request: Request, message_req: MessageRequest):
             visitor_info['employee_matches'] = flow.employee_matches
             visitor_info['scheduled_meeting_selection_mode'] = flow.scheduled_meeting_selection_mode
             visitor_info['scheduled_meeting_options'] = flow.scheduled_meeting_options
-            print(f"[DEBUG][RETURN] /process-message/ (prescheduled): response={response!r}, next_step={flow.current_step!r}, visitor_info={visitor_info!r}")
+            #print(f"[DEBUG][RETURN] /process-message/ (prescheduled): response={response!r}, next_step={flow.current_step!r}, visitor_info={visitor_info!r}")
             return MessageResponse(
                 response=response,
                 next_step=flow.current_step,

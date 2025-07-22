@@ -80,7 +80,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, className = '',
     );
     if (infoLines.length > 0) {
       summaryBlock = (
-        <div className="mb-2 text-sm text-gray-200 whitespace-pre-line border border-gray-700 rounded-lg p-2 bg-gray-900/70">
+        <div className="mb-2 text-sm text-gray-200 whitespace-pre-line border border-gray-700 rounded-lg p-3 bg-gray-900/70">
           {infoLines.join('\n')}
         </div>
       );

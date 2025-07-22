@@ -109,6 +109,17 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
     return { display: line.trim(), value: line.trim() };
   });
 
+  // Custom: If the prompt is the intro greeting, show the four visitor type buttons
+  const isIntroGreeting = prompt.trim() === '🙄 Oh look, another human at the gates of innovation. I’m your AI receptionist, not a therapist, so let’s keep this short. You are:';
+  const visitorTypeButtons = isIntroGreeting
+    ? [
+        { display: '🧍 Guest – here to sip coffee and nod?', value: 'guest' },
+        { display: '📦 Vendor – bless us with cardboard and chaos?', value: 'vendor' },
+        { display: '📅 Meeting – how official of you.', value: 'prescheduled' },
+        { display: '🧾 CV / Interview / Joiner – chasing dreams or HR already owns you?', value: 'cv drop / interview / new joiner' },
+      ]
+    : [];
+
   const showButtons = message.type === 'bot' && (options.length > 0 || emojiOptions.length > 0 || isConfirmation || isEmployeeSelection || isCompletionMessage);
 
   const cardVariants = {
@@ -129,6 +140,19 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
     },
   };
 
+  // --- CV Drop / Interview / New Joiner buttons ---
+  const cvPrompt = prompt.toLowerCase().includes('cv drop') && prompt.toLowerCase().includes('interview') && prompt.toLowerCase().includes('new joiner');
+  const cvFlowButtons = cvPrompt
+    ? [
+        { display: '📄 CV Drop', value: 'cv drop' },
+        { display: '🧑‍💼 Interview', value: 'interview' },
+        { display: '👥 New Joiner', value: 'new joiner' },
+      ]
+    : [];
+
+  // Hide the prompt if it's the CV flow selection
+  const isCVFlowPrompt = cvPrompt;
+
   return (
     <AnimatePresence mode="wait">
       {isVisible && (
@@ -138,10 +162,10 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
           animate="center"
           exit="exit"
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 flex items-center justify-center p-4"
+          className="fixed inset-0 flex items-center justify-center p-6"
         >
           <div
-            className="w-full max-w-lg rounded-xl p-6 shadow-2xl border border-gray-700 backdrop-blur-md"
+            className="w-full max-w-lg rounded-xl p-6 pt-4 shadow-2xl border border-gray-700 backdrop-blur-md"
             style={{
               background: 'rgba(20, 24, 34, 0.78)', // dark, semi-transparent
               boxShadow: '0 8px 32px 0 rgba(239, 68, 68, 0.37)', // red shadow
@@ -151,15 +175,17 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
             {/* Question Content */}
             <div className="space-y-4">
               {/* Main Prompt */}
-              <h2 className="text-xl text-white font-medium">{prompt}</h2>
+              {!isCVFlowPrompt && (
+                <h2 className="text-xl text-white font-medium">{prompt}</h2>
+              )}
 
               {/* Summary Block for Confirmation */}
               {summaryInfo.length > 0 && (
-                <div className="text-sm text-gray-200 whitespace-pre-line border border-gray-700 rounded-lg p-3 bg-gray-900/70">
+                <div className="mb-2 text-sm text-gray-200 whitespace-pre-line border border-gray-700 rounded-lg p-3 bg-gray-900/70">
                   {summaryInfo.join('\n')}
                 </div>
               )}              {/* Options */}
-              {showButtons && (
+              {(showButtons || visitorTypeButtons.length > 0 || cvFlowButtons.length > 0) && (
                 <div className="grid gap-3 mt-4">
                   {/* Completion Message with New Registration Button */}
                   {isCompletionMessage && (
@@ -171,6 +197,18 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                     </button>
                   )}
 
+                  {/* Visitor Type Buttons for Intro Greeting */}
+                  {visitorTypeButtons.length > 0 && visitorTypeButtons.map(opt => (
+                    <button
+                      key={opt.value}
+                      className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
+                      onClick={() => onSelect(opt.value)}
+                      disabled={isLoading}
+                    >
+                      {opt.display}
+                    </button>
+                  ))}
+
                   {/* Employee Selection Options */}
                   {isEmployeeSelection && (
                     <>
@@ -178,7 +216,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                         <button
                           key={option.value}
                           onClick={() => onSelect(option.value)}
-                          className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                          className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
                         >
                           {option.display}
                         </button>
@@ -187,7 +225,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                         <button
                           key={option.value}
                           onClick={() => onSelect(option.value)}
-                          className="w-full px-4 py-2 text-left text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors"
+                          className="w-full px-4 py-2 text-left text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors font-medium"
                         >
                           {option.display}
                         </button>
@@ -202,7 +240,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                       <button
                         key={num}
                         onClick={() => onSelect(num)}
-                        className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                        className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
                       >
                         {textParts.join('.').trim()}
                       </button>
@@ -213,7 +251,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                   {emojiOptions.length > 0 && emojiOptions.map(opt => (
                     <button
                       key={opt.value}
-                      className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors"
+                      className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
                       onClick={() => onSelect(opt.value)}
                       disabled={isLoading}
                     >
@@ -221,19 +259,36 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                     </button>
                   ))}
 
+                  {/* CV Drop / Interview / New Joiner buttons */}
+                  {cvFlowButtons.length > 0 && (
+                    <>
+                      <div className="text-white mb-2 mt-2">Please select:</div>
+                      {cvFlowButtons.map(btn => (
+                        <button
+                          key={btn.value}
+                          className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
+                          onClick={() => onSelect(btn.value)}
+                          disabled={isLoading}
+                        >
+                          {btn.display}
+                        </button>
+                      ))}
+                    </>
+                  )}
+
                   {/* Confirmation Buttons */}
                   {isConfirmation && (
                     <div className="flex gap-3">
                       <button
                         onClick={() => onSelect('confirm')}
-                        className="flex-1 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         disabled={isLoading}
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => onSelect('edit')}
-                        className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                         disabled={isLoading}
                       >
                         Edit

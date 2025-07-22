@@ -11,6 +11,7 @@ from flows import (guest_flow, SUPPLIERS, vendor_flow, validate_cnic, validate_p
 from prompts import get_dynamic_prompt, get_confirmation_message, get_error_message, HARDCODED_WELCOME, SUPPLIERS
 import random
 from prescheduled_flow import PreScheduledFlow
+from cv_interview_joiner_flow import CVInterviewJoinerFlow
 
 # --- FastAPI & MongoDB Integration ---
 from fastapi import FastAPI, HTTPException, Request, Depends, status, Form
@@ -353,6 +354,7 @@ class DPLReceptionist:
         self.employee_matches = []
         from flows import ResponseContext
         self.response_context = ResponseContext()
+        self.cv_interview_joiner_flow = None
        
     def reset(self):
         self.init()
@@ -365,7 +367,7 @@ class DPLReceptionist:
 
             # Handle invalid input before trying AI response
             if not user_input:
-                return "Please select: 1 for Guest, 2 for Vendor, 3 for Pre-scheduled meeting"
+                return "Please select: 1 for Guest, 2 for Vendor, 3 for Pre-scheduled meeting, 4 for CV Drop / Interview / New Joiner"
 
             # Only call AI once, after logic
             if user_input in ["1", "guest"]:
@@ -389,9 +391,16 @@ class DPLReceptionist:
                 flow.visitor_info = self.visitor_info.to_dict() if hasattr(self.visitor_info, 'to_dict') else dict(self.visitor_info)
                 ai_prompt = await flow._get_ai_prompt_for_step("scheduled_name")
                 return ai_prompt
+            elif user_input in ["4", "cv drop", "interview", "new joiner", "cv drop / interview / new joiner"]:
+                self.visitor_info.visitor_type = "cv_interview_joiner"
+                self.cv_interview_joiner_flow = CVInterviewJoinerFlow(ai=self.ai, db_collection=visitors_collection)
+                return await self.cv_interview_joiner_flow.start_flow()
             else:
                 # Return standard error message for invalid input
                 return get_error_message("visitor_type")
+        # Handle CV Drop / Interview / New Joiner flow
+        if self.visitor_info.visitor_type == "cv_interview_joiner" and self.cv_interview_joiner_flow:
+            return await self.cv_interview_joiner_flow.process_input(user_input)
 
         # Guest flow (all responses must be AI-generated)
         if self.visitor_info.visitor_type == "guest":
@@ -1069,7 +1078,7 @@ async def process_message(request: Request, message_req: MessageRequest):
             host_email = message_req.visitor_info.get('host_email')
             host_requested = message_req.visitor_info.get('host_requested')
             
-            print(f"[DEBUG] Received from frontend - host_confirmed: {host_confirmed}, host_email: {host_email}, host_requested: {host_requested}")
+            #print(f"[DEBUG] Received from frontend - host_confirmed: {host_confirmed}, host_email: {host_email}, host_requested: {host_requested}")
             
             # Restore all visitor info attributes
             for k, v in message_req.visitor_info.items():
@@ -1097,7 +1106,7 @@ async def process_message(request: Request, message_req: MessageRequest):
             if message_req.visitor_info.get('scheduled_meeting_selection_mode'):
                 receptionist.scheduled_meeting_selection_mode = True
                 receptionist.scheduled_meeting_options = message_req.visitor_info.get('scheduled_meeting_options', [])
-            print("[DEBUG] visitor_info after restore:", receptionist.visitor_info.to_dict())
+            #print("[DEBUG] visitor_info after restore:", receptionist.visitor_info.to_dict())
         # Check for prescheduled flow
         if message_req.visitor_info and message_req.visitor_info.get('visitor_type') == 'prescheduled':
             flow = PreScheduledFlow(ai=ai_receptionist)
@@ -1128,7 +1137,28 @@ async def process_message(request: Request, message_req: MessageRequest):
                 next_step=flow.current_step,
                 visitor_info=visitor_info
             )
-       
+        
+        # Check for CV / Interview / Joiner flow
+        if message_req.visitor_info and message_req.visitor_info.get('visitor_type') == 'cv_interview_joiner':
+            flow = CVInterviewJoinerFlow(
+                ai=ai_receptionist,
+                db_collection=visitors_collection,
+                visitor_info=message_req.visitor_info
+            )
+            if message_req.current_step:
+                flow.current_step = message_req.current_step
+
+            response = await flow.process_input(message_req.message)
+            visitor_info = flow.visitor_info
+            visitor_info['purpose'] = flow.selected_option
+            visitor_info['current_step'] = flow.current_step
+
+            return MessageResponse(
+                response=response,
+                next_step=flow.current_step,
+                visitor_info=visitor_info
+            )
+
         # Process the message
         response = await receptionist.process_input(message_req.message)
 
@@ -1148,7 +1178,7 @@ async def process_message(request: Request, message_req: MessageRequest):
         if receptionist.current_step == 'complete':
             visitor_info['registration_completed'] = True
            
-        print(f"[DEBUG][RETURN] /process-message/: response={response!r}, next_step={receptionist.current_step!r}, visitor_info={visitor_info!r}")
+        #print(f"[DEBUG][RETURN] /process-message/: response={response!r}, next_step={receptionist.current_step!r}, visitor_info={visitor_info!r}")
         return MessageResponse(
             response=response,
             next_step=receptionist.current_step,

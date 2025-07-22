@@ -11,7 +11,7 @@ const INITIAL_STATE: ChatState = {
   messages: [
     {
       type: 'bot',
-      content: '🙄 Oh look, another human at the gates of innovation.  \nI’m your AI receptionist, not a therapist, so let’s keep this short.\n\nYou are:\n🧍 Guest – here to sip coffee and nod?  \n📦 Vendor – bless us with cardboard and chaos?  \n📅 Meeting – how official of you.',
+      content: '🙄 Oh look, another human at the gates of innovation. I’m your AI receptionist, not a therapist, so let’s keep this short. You are:',
       timestamp: new Date(),
     },
   ],

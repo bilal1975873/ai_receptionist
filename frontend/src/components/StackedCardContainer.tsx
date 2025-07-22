@@ -74,7 +74,7 @@ export const StackedCardContainer: React.FC<StackedCardContainerProps> = ({
   };
 
   return (
-    <div className="relative h-[calc(100vh-120px)] flex items-center justify-center">
+    <div className="relative h-[calc(100vh-120px)] flex items-center justify-center px-6">
       <div className="relative w-full max-w-lg mx-auto">
         <AnimatePresence mode="popLayout">
           {lastBotMessages.map((message, index) => (

@@ -60,9 +60,13 @@ class PreScheduledFlow:
         # Debug log: print the context being sent to Bedrock
         #print(f"[DEBUG][AI_PROMPT_CONTEXT][{step}] Context sent to Bedrock: {context}")
         # Use the AI to generate the prompt
-        return await asyncio.get_event_loop().run_in_executor(
+        ai_prompt = await asyncio.get_event_loop().run_in_executor(
             None, lambda: self.ai.process_visitor_input("", context)
         )
+        if not ai_prompt or ai_prompt.strip().lower().startswith("please provide"):
+            print(f"[DEBUG][FALLBACK] AI prompt unavailable or fallback for step '{step}', returning error message.")
+            return "Sorry, I glitched. Please try again or contact reception."
+        return ai_prompt
     def __init__(self, ai: AIReceptionist):
         self.ai = ai
         self.current_step = "scheduled_name"
@@ -165,8 +169,7 @@ class PreScheduledFlow:
             self.visitor_info["visitor_name"] = user_input.strip()
             self.current_step = "scheduled_cnic"
             ai_prompt = await self._get_ai_prompt_for_step("scheduled_cnic")
-            # Always return only the AI prompt, never fallback
-            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
+            return ai_prompt
         # Step 2: CNIC
         elif self.current_step == "scheduled_cnic":
             if not user_input.strip():
@@ -176,7 +179,7 @@ class PreScheduledFlow:
             self.visitor_info["visitor_cnic"] = user_input.strip()
             self.current_step = "scheduled_phone"
             ai_prompt = await self._get_ai_prompt_for_step("scheduled_phone")
-            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
+            return ai_prompt
         # Step 3: Phone
         elif self.current_step == "scheduled_phone":
             if not user_input.strip():
@@ -186,7 +189,7 @@ class PreScheduledFlow:
             self.visitor_info["visitor_phone"] = user_input.strip()
             self.current_step = "scheduled_email"
             ai_prompt = await self._get_ai_prompt_for_step("scheduled_email")
-            return ai_prompt if ai_prompt else "[AI prompt unavailable]"
+            return ai_prompt
         # Step 4: Email - Now directly checks meetings across all host calendars
         elif self.current_step == "scheduled_email":
             if not user_input.strip():

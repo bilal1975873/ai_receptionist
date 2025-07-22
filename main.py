@@ -1117,6 +1117,7 @@ async def process_message(request: Request, message_req: MessageRequest):
             visitor_info['employee_matches'] = flow.employee_matches
             visitor_info['scheduled_meeting_selection_mode'] = flow.scheduled_meeting_selection_mode
             visitor_info['scheduled_meeting_options'] = flow.scheduled_meeting_options
+            print(f"[DEBUG][RETURN] /process-message/ (prescheduled): response={response!r}, next_step={flow.current_step!r}, visitor_info={visitor_info!r}")
             return MessageResponse(
                 response=response,
                 next_step=flow.current_step,
@@ -1142,6 +1143,7 @@ async def process_message(request: Request, message_req: MessageRequest):
         if receptionist.current_step == 'complete':
             visitor_info['registration_completed'] = True
            
+        print(f"[DEBUG][RETURN] /process-message/: response={response!r}, next_step={receptionist.current_step!r}, visitor_info={visitor_info!r}")
         return MessageResponse(
             response=response,
             next_step=receptionist.current_step,

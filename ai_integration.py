@@ -673,21 +673,11 @@ Assistant:
                 #     return prompt_text
                         
                 # Use the step prompts for other flows
-                prompt_text = get_dynamic_prompt(current_step, flow_type)
-                if prompt_text:
+                # Only use the static prompt as a fallback if the AI response is empty
+                if not generation:
                     prompt_text = get_dynamic_prompt(current_step, flow_type)
-                    
-                    # Don't personalize scheduled steps
-                    if current_step.startswith('scheduled_'):
+                    if prompt_text:
                         generation = prompt_text
-                    # Personalize guest flow responses with name if available
-                    else:
-                        if formatted_context.get("visitor_name"):
-                            visitor_name = formatted_context["visitor_name"]
-                            generation = f"{visitor_name}, {prompt_text}"
-                        else:
-                            generation = prompt_text
-                    
                 ai_response = generation
 
                 # After 'NEXT QUESTION:', scan forward for the first non-empty, non-meta line as the question

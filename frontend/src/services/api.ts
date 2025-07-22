@@ -141,7 +141,10 @@ export const visitorService = {
         visitor_info: sanitizedVisitorInfo,
       });
 
+      console.debug('[DEBUG][FRONTEND] Full API response from /process-message/:', response);
+
       const { response: botResponse, next_step, visitor_info } = response.data;
+      console.debug('[DEBUG][FRONTEND] Parsed values - response:', botResponse, 'nextStep:', next_step, 'visitorInfo:', visitor_info);
       
       if (!botResponse || typeof botResponse !== 'string') {
         throw new Error('Invalid response from server: Missing or invalid response message');

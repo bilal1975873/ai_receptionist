@@ -162,10 +162,10 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
           animate="center"
           exit="exit"
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 flex items-center justify-center p-6"
+          className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6"
         >
           <div
-            className="w-full max-w-lg rounded-xl p-6 pt-4 shadow-2xl border border-gray-700 backdrop-blur-md"
+            className="w-full max-w-md sm:max-w-lg rounded-xl p-3 sm:p-5 md:p-6 pt-3 sm:pt-4 shadow-2xl border border-gray-700 backdrop-blur-md"
             style={{
               background: 'rgba(20, 24, 34, 0.78)', // dark, semi-transparent
               boxShadow: '0 8px 32px 0 rgba(239, 68, 68, 0.37)', // red shadow
@@ -173,10 +173,10 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
             }}
           >
             {/* Question Content */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Main Prompt */}
               {!isCVFlowPrompt && (
-                <h2 className="text-xl text-white font-medium">{prompt}</h2>
+                <h2 className="text-base sm:text-lg md:text-xl text-white font-medium">{prompt}</h2>
               )}
 
               {/* Summary Block for Confirmation */}
@@ -186,7 +186,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                 </div>
               )}              {/* Options */}
               {(showButtons || visitorTypeButtons.length > 0 || cvFlowButtons.length > 0) && (
-                <div className="grid gap-3 mt-4">
+                <div className="grid gap-2 sm:gap-3 mt-3 sm:mt-4">
                   {/* Completion Message with New Registration Button */}
                   {isCompletionMessage && (
                     <button
@@ -201,7 +201,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                   {visitorTypeButtons.length > 0 && visitorTypeButtons.map(opt => (
                     <button
                       key={opt.value}
-                      className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
+                      className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium text-sm sm:text-base"
                       onClick={() => onSelect(opt.value)}
                       disabled={isLoading}
                     >
@@ -216,7 +216,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                         <button
                           key={option.value}
                           onClick={() => onSelect(option.value)}
-                          className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
+                          className="w-full px-3 sm:px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium text-sm sm:text-base"
                         >
                           {option.display}
                         </button>
@@ -225,7 +225,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                         <button
                           key={option.value}
                           onClick={() => onSelect(option.value)}
-                          className="w-full px-4 py-2 text-left text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors font-medium"
+                          className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gray-700 hover:bg-gray-800 rounded-lg transition-colors font-medium text-sm sm:text-base"
                         >
                           {option.display}
                         </button>
@@ -240,7 +240,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                       <button
                         key={num}
                         onClick={() => onSelect(num)}
-                        className="w-full px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
+                        className="w-full px-3 sm:px-4 py-2 text-left text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium text-sm sm:text-base"
                       >
                         {textParts.join('.').trim()}
                       </button>
@@ -251,7 +251,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                   {emojiOptions.length > 0 && emojiOptions.map(opt => (
                     <button
                       key={opt.value}
-                      className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
+                      className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium text-sm sm:text-base"
                       onClick={() => onSelect(opt.value)}
                       disabled={isLoading}
                     >
@@ -266,7 +266,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                       {cvFlowButtons.map(btn => (
                         <button
                           key={btn.value}
-                          className="w-full px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium"
+                          className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium text-sm sm:text-base"
                           onClick={() => onSelect(btn.value)}
                           disabled={isLoading}
                         >
@@ -278,17 +278,17 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
 
                   {/* Confirmation Buttons */}
                   {isConfirmation && (
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                       <button
                         onClick={() => onSelect('confirm')}
-                        className="flex-1 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        className="flex-1 px-3 sm:px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
                         disabled={isLoading}
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => onSelect('edit')}
-                        className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        className="flex-1 px-3 sm:px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
                         disabled={isLoading}
                       >
                         Edit

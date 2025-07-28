@@ -21,7 +21,7 @@ export const ChatContainer: React.FC<ChatContainerProps & { onStartOver?: () => 
     .find(message => message.type === 'bot');
 
   return (
-    <div className="relative h-screen w-full max-w-4xl mx-auto px-6">
+    <div className="relative min-h-[60vh] h-[calc(100dvh-120px)] w-full max-w-4xl mx-auto px-2 sm:px-4 md:px-6 pb-40 sm:pb-28 md:pb-20 flex flex-col justify-end">
       {lastBotMessage && (
         <CardQuestion
           message={lastBotMessage}
@@ -31,10 +31,12 @@ export const ChatContainer: React.FC<ChatContainerProps & { onStartOver?: () => 
           //onStartOver={onStartOver}
         />
       )}
-      {/* Fixed input at bottom */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-lg mx-auto px-6">
-        <div className="bg-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
-          <ChatInput onSend={onSend} isLoading={isLoading} onStartOver={onStartOver} />
+      {/* Responsive input at bottom */}
+      <div className="fixed bottom-0 left-0 w-full flex justify-center z-20 px-1 sm:px-4 pb-2 sm:pb-6 pointer-events-none">
+        <div className="w-full max-w-lg pointer-events-auto">
+          <div className="bg-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
+            <ChatInput onSend={onSend} isLoading={isLoading} onStartOver={onStartOver} />
+          </div>
         </div>
       </div>
     </div>

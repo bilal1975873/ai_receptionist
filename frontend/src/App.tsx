@@ -300,14 +300,14 @@ function App() {
       <div className="fixed bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-red-500/10 via-red-600/5 to-transparent rounded-tl-full"></div>
       <div className="fixed bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-red-500/10 via-red-600/5 to-transparent rounded-tr-full"></div>
 
-      <div className="relative z-10 container mx-auto px-4 min-h-screen flex flex-col">
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-1 sm:px-4 min-h-screen flex flex-col">
         {/* Enhanced Logo Container */}
-        <div className="flex justify-center mb-8 pt-8">
+        <div className="flex justify-center mb-4 pt-4 sm:mb-8 sm:pt-8">
           <div className="relative transform hover:scale-105 transition-transform duration-300">
             <img 
               src={dplLogo} 
               alt="DPL Logo" 
-              className="h-16 md:h-20 drop-shadow-2xl filter brightness-110" 
+              className="h-12 sm:h-16 md:h-20 drop-shadow-2xl filter brightness-110" 
             />
             {/* Logo glow effect */}
             <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-red-600/20 via-transparent to-white/10 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>

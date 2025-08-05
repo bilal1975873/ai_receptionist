@@ -12,6 +12,7 @@ from prompts import get_dynamic_prompt, get_confirmation_message, get_error_mess
 import random
 from prescheduled_flow import PreScheduledFlow
 from cv_interview_joiner_flow import CVInterviewJoinerFlow
+from admin_support_flow import AdminSupportFlow
 
 # --- FastAPI & MongoDB Integration ---
 from fastapi import FastAPI, HTTPException, Request, Depends, status, Form
@@ -395,12 +396,20 @@ class DPLReceptionist:
                 self.visitor_info.visitor_type = "cv_interview_joiner"
                 self.cv_interview_joiner_flow = CVInterviewJoinerFlow(ai=self.ai, db_collection=visitors_collection)
                 return await self.cv_interview_joiner_flow.start_flow()
+            elif user_input in ["5", "admin support", "🛠️ admin support – pipes burst? wires fried? furniture falling apart?"]:
+                self.visitor_info.visitor_type = "admin_support"
+                self.admin_support_flow = AdminSupportFlow(ai=self.ai, db_collection=visitors_collection)
+                return await self.admin_support_flow.start_flow()
             else:
                 # Return standard error message for invalid input
                 return get_error_message("visitor_type")
         # Handle CV Drop / Interview / New Joiner flow
         if self.visitor_info.visitor_type == "cv_interview_joiner" and self.cv_interview_joiner_flow:
             return await self.cv_interview_joiner_flow.process_input(user_input)
+
+        # Handle Admin Support flow
+        if self.visitor_info.visitor_type == "admin_support" and self.admin_support_flow:
+            return await self.admin_support_flow.process_input(user_input)
 
         # Guest flow (all responses must be AI-generated)
         if self.visitor_info.visitor_type == "guest":
@@ -1151,6 +1160,27 @@ async def process_message(request: Request, message_req: MessageRequest):
             response = await flow.process_input(message_req.message)
             visitor_info = flow.visitor_info
             visitor_info['purpose'] = flow.selected_option
+            visitor_info['current_step'] = flow.current_step
+
+            return MessageResponse(
+                response=response,
+                next_step=flow.current_step,
+                visitor_info=visitor_info
+            )
+
+        # Check for Admin Support flow
+        if message_req.visitor_info and message_req.visitor_info.get('visitor_type') == 'admin_support':
+            flow = AdminSupportFlow(
+                ai=ai_receptionist,
+                db_collection=visitors_collection,
+                visitor_info=message_req.visitor_info
+            )
+            if message_req.current_step:
+                flow.current_step = message_req.current_step
+
+            response = await flow.process_input(message_req.message)
+            visitor_info = flow.visitor_info
+            visitor_info['service_type'] = flow.selected_service.value if flow.selected_service else None
             visitor_info['current_step'] = flow.current_step
 
             return MessageResponse(

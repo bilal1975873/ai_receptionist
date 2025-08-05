@@ -53,13 +53,25 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
     : [];
 
   // --- Move isConfirmation before summaryInfo and prompt ---
+  // Update: Always show Confirm/Edit buttons for admin support flow confirmation step, matching other flows
+  const isAdminSupportConfirmation = message.type === 'bot' && (
+    safeContent.toLowerCase().includes('admin support team') &&
+    safeContent.toLowerCase().includes('your check-in has been recorded') &&
+    safeContent.toLowerCase().includes('name:') &&
+    safeContent.toLowerCase().includes('cnic:') &&
+    safeContent.toLowerCase().includes('phone:') &&
+    safeContent.toLowerCase().includes('host:') &&
+    safeContent.toLowerCase().includes('service:')
+  );
+
   const isConfirmation = message.type === 'bot' && (
     (safeContent.toLowerCase().includes('confirm') && safeContent.toLowerCase().includes('edit')) ||
     (safeContent.includes('[confirm]') && safeContent.includes('[edit]')) ||
     (safeContent.toLowerCase().includes('confirm') && (
       safeContent.toLowerCase().includes('final check') || 
       safeContent.toLowerCase().includes('please review')
-    ))
+    )) ||
+    isAdminSupportConfirmation
   );
 
   // Extract summary info for confirmation cards
@@ -109,18 +121,19 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
     return { display: line.trim(), value: line.trim() };
   });
 
-  // Custom: If the prompt is the intro greeting, show the four visitor type buttons
-  const isIntroGreeting = prompt.trim() === '🙄 Oh look, another human at the gates of innovation. I’m your AI receptionist, not a therapist, so let’s keep this short. You are:';
+  // Custom: If the prompt is the intro greeting, show the five visitor type buttons
+  const isIntroGreeting = prompt.trim().replace(/[’']/g, "'").includes("Oh look, another human at the gates of innovation. I'm your AI receptionist, not a therapist, so let's keep this short. You are:");
   const visitorTypeButtons = isIntroGreeting
     ? [
         { display: '🧍 Guest – here to sip coffee and nod?', value: 'guest' },
         { display: '📦 Vendor – bless us with cardboard and chaos?', value: 'vendor' },
         { display: '📅 Meeting – how official of you.', value: 'prescheduled' },
         { display: '🧾 CV / Interview / Joiner – chasing dreams or HR already owns you?', value: 'cv drop / interview / new joiner' },
+        { display: '🛠️ Admin Support – External maintenance personnel reporting in?', value: 'admin support' },
       ]
     : [];
 
-  const showButtons = message.type === 'bot' && (options.length > 0 || emojiOptions.length > 0 || isConfirmation || isEmployeeSelection || isCompletionMessage);
+
 
   const cardVariants = {
     enter: {
@@ -153,6 +166,23 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
   // Hide the prompt if it's the CV flow selection
   const isCVFlowPrompt = cvPrompt;
 
+  // --- Admin Support Service Selection buttons ---
+  const adminSupportPrompt = prompt.toLowerCase().includes('admin support') && prompt.toLowerCase().includes('who are you here as');
+  const adminSupportButtons = adminSupportPrompt
+    ? [
+        { display: '🔧 Plumber – here to check the pipes?', value: 'plumber' },
+        { display: '💡 Electrician – got wires to fix?', value: 'electrician' },
+        { display: '🛠️ Carpenter – on-site for repairs?', value: 'carpenter' },
+        { display: '🎨 Painter – paintwork duty today?', value: 'painter' },
+        { display: '📝 Other – something else?', value: 'other' },
+      ]
+    : [];
+
+  // Hide the prompt if it's the Admin Support flow selection
+  const isAdminSupportFlowPrompt = adminSupportPrompt;
+
+  const showButtons = message.type === 'bot' && (options.length > 0 || emojiOptions.length > 0 || isConfirmation || isEmployeeSelection || isCompletionMessage || adminSupportButtons.length > 0);
+
   return (
     <AnimatePresence mode="wait">
       {isVisible && (
@@ -175,7 +205,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
             {/* Question Content */}
             <div className="space-y-3 sm:space-y-4">
               {/* Main Prompt */}
-              {!isCVFlowPrompt && (
+              {!isCVFlowPrompt && !isAdminSupportFlowPrompt && (
                 <h2 className="text-base sm:text-lg md:text-xl text-white font-medium">{prompt}</h2>
               )}
 
@@ -185,7 +215,7 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                   {summaryInfo.join('\n')}
                 </div>
               )}              {/* Options */}
-              {(showButtons || visitorTypeButtons.length > 0 || cvFlowButtons.length > 0) && (
+              {(showButtons || visitorTypeButtons.length > 0 || cvFlowButtons.length > 0 || adminSupportButtons.length > 0) && (
                 <div className="grid gap-2 sm:gap-3 mt-3 sm:mt-4">
                   {/* Completion Message with New Registration Button */}
                   {isCompletionMessage && (
@@ -264,6 +294,23 @@ export const CardQuestion: React.FC<CardQuestionProps> = ({
                     <>
                       <div className="text-white mb-2 mt-2">Please select:</div>
                       {cvFlowButtons.map(btn => (
+                        <button
+                          key={btn.value}
+                          className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium text-sm sm:text-base"
+                          onClick={() => onSelect(btn.value)}
+                          disabled={isLoading}
+                        >
+                          {btn.display}
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Admin Support Service Selection buttons */}
+                  {adminSupportButtons.length > 0 && (
+                    <>
+                      <div className="text-white mb-2 mt-2">Please select:</div>
+                      {adminSupportButtons.map(btn => (
                         <button
                           key={btn.value}
                           className="w-full px-3 sm:px-4 py-2 text-left text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 rounded-lg transition-colors font-medium text-sm sm:text-base"

@@ -467,7 +467,7 @@ class CVInterviewJoinerFlow:
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
             try:
                 doc = {
-                    "type": "CV Drop / Interview / New Joiner",
+                    "type": self.selected_option.value if self.selected_option else "",
                     "visitor_name": self.visitor_info.get("visitor_name", ""),
                     "visitor_cnic": self.visitor_info.get("visitor_cnic", ""),
                     "visitor_phone": self.visitor_info.get("visitor_phone", ""),
@@ -475,16 +475,13 @@ class CVInterviewJoinerFlow:
                     "purpose": self.selected_option.value if self.selected_option else "",
                     "timestamp": datetime.utcnow()
                 }
-                
                 await self.db_collection.insert_one(doc)
                 logger.info(f"Successfully saved visitor data: {self.visitor_info.get('visitor_name', 'Unknown')}")
                 return True
-                
             except Exception as e:
                 logger.error(f"Database save attempt {attempt + 1} failed: {e}")
                 if attempt < self.MAX_RETRY_ATTEMPTS - 1:
                     await asyncio.sleep(1)  # Brief delay before retry
-                
         logger.error("All database save attempts failed")
         return False
 
@@ -506,6 +503,8 @@ class CVInterviewJoinerFlow:
                 pst = timezone(timedelta(hours=5))
                 timestamp = datetime.now(pst).strftime("%d-%m-%Y %I:%M:%S %p")
                 
+                # For CV/Interview/New Joiner, access level is always L1
+                access_level = 'L1'
                 message = (
                     f"🚨 <b>{purpose_display} Notification</b><br><br>"
                     "A visitor has arrived for HR/Recruitment. Here are the details:<br><br>"
@@ -513,6 +512,7 @@ class CVInterviewJoinerFlow:
                     f"📞 <b>Phone:</b> {self.visitor_info.get('visitor_phone', 'Not provided')}<br>"
                     f"🏢 <b>Host:</b> {self.HOST_NAME}<br>"
                     f"🎯 <b>Purpose:</b> {purpose_display}<br>"
+                    f"🔐 <b>Access Level:</b> {access_level}<br>"
                     f"🕒 <b>Time:</b> {timestamp}<br><br>"
                     "Please assist the visitor accordingly. 🤝"
                 )

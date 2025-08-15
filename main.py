@@ -503,13 +503,17 @@ class DPLReceptionist:
                             # --- Use host_confirmed if set, else fallback to host_requested (entered by guest)
                             host_display = self.visitor_info.host_confirmed or self.visitor_info.host_requested or "(Unknown Host)"
                             purpose_display = self.visitor_info.purpose or "(No Purpose)"
+                            # Add access level to the message
+                            # For guest, access level is always L1
+                            access_level = 'L1'
                             message = (
                                 "🚨 <b>Guest Arrival Notification</b><br><br>"
                                 "A guest has stormed the gates. Here are the details:<br><br>"
                                 f"👤 Name: {self.visitor_info.visitor_name}<br>"
                                 f"📞 Phone: {self.visitor_info.visitor_phone}<br>"
                                 f"🤝 Host: {host_display}<br>"
-                                f"🎯 Purpose: {purpose_display}"
+                                f"🎯 Purpose: {purpose_display}<br>"
+                                f"🔐 Access Level: {access_level}"
                             )
                             await self.ai.send_message_to_host(chat_id, access_token, message)
                     except Exception as e:
@@ -580,28 +584,13 @@ class DPLReceptionist:
                 if not validate_name(user_input.strip()):
                     return get_error_message("name")
                 self.visitor_info.visitor_name = user_input.strip()
-                self.current_step = "vendor_group_size"
+                # Set default group visit values (single visitor)
+                self.visitor_info.total_members = 1
+                self.visitor_info.is_group_visit = False
+                self.current_step = "vendor_cnic"
                 context["current_step"] = self.current_step
                 ai_msg = await self.get_ai_response(user_input, context)
                 return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
-            elif self.current_step == "vendor_group_size":
-                context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
-                try:
-                    group_size = int(user_input.strip())
-                    if group_size < 1:
-                        return get_error_message("invalid_choice")
-                    if group_size > 10:
-                        return get_error_message("invalid_choice")
-                    self.visitor_info.total_members = group_size
-                    self.visitor_info.is_group_visit = group_size > 1
-                    if group_size > 1:
-                        self.visitor_info.group_id = str(datetime.now(timezone.utc).timestamp())
-                    self.current_step = "vendor_cnic"
-                    context["current_step"] = self.current_step
-                    ai_msg = await self.get_ai_response(user_input, context)
-                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
-                except ValueError:
-                    return get_error_message("invalid_choice")
             elif self.current_step == "vendor_cnic":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 if not validate_cnic(user_input.strip()):
@@ -700,13 +689,16 @@ class DPLReceptionist:
                         admin_user_id = await self.ai.get_user_id("admin_IT@dpl660.onmicrosoft.com", access_token)
                         chat_id = await self.ai.create_or_get_chat(admin_user_id, system_user_id, access_token)
                         # --- Use HTML for Teams notification, like pre-scheduled ---
+                        # For vendor, access level is always L2
+                        access_level = 'L2'
                         message = (
                             "🔔 <b>Vendor Arrival Notification</b><br><br>"
     "A vendor has arrived at reception. Here are the details:<br><br>"
     f"👤 Name: {self.visitor_info.visitor_name}<br>"
     f"🏢 Supplier: {self.visitor_info.supplier}<br>"
     f"🆔 CNIC: {self.visitor_info.visitor_cnic}<br>"
-    f"📞 Phone: {self.visitor_info.visitor_phone}"
+    f"📞 Phone: {self.visitor_info.visitor_phone}<br>"
+    f"🔐 Access Level: {access_level}"
                         )
                         if self.visitor_info.is_group_visit:
                             message += f"<br>👥 Group size: {self.visitor_info.total_members}"

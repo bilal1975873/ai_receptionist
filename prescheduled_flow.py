@@ -717,6 +717,8 @@ class PreScheduledFlow:
             # For early arrivals, only notify admin, not host
         else:
             # Normal arrival notification
+            # For prescheduled, access level is always L2
+            access_level = 'L2'
             message = (
                 "🔔 <b>Scheduled Visitor Arrival Notification</b><br><br>"
                 "A scheduled visitor has arrived. Here are the details:<br><br>"
@@ -726,7 +728,8 @@ class PreScheduledFlow:
                 f"🕓 Scheduled Time: {time_range}<br>"
                 f"🚶 Arrival Time: {arrival_fmt}<br>"
                 f"👨‍💼 Host: {self.visitor_info['host_confirmed']}<br>"
-                f"🎯 Subject: {subject}"
+                f"🎯 Subject: {subject}<br>"
+                f"🔐 Access Level: {access_level}"
             )
             await self.ai.send_message_to_host(chat_id, access_token, message)
             # For normal arrivals, notify both admin and host

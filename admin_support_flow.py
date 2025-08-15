@@ -48,7 +48,7 @@ class AdminSupportFlow:
     # Class constants
     MAX_RETRY_ATTEMPTS = 3
     VALID_CONFIRMATIONS = {"yes", "y", "confirm", "ok", "proceed"}
-    HOST_NAME = "Admin Team"
+    HOST_NAME = "Admin"
     
     def __init__(self, ai, db_collection, visitor_info: Optional[Dict[str, Any]] = None):
         self.ai = ai
@@ -441,6 +441,8 @@ class AdminSupportFlow:
         try:
             purpose_display = self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else "Not specified")
             
+            # For admin support, access level is always L2
+            access_level = 'L2'
             summary = (
                 f"👤 Name: {self.visitor_info.get('visitor_name', 'Not provided')}\n"
                 f"🆔 CNIC: {self.visitor_info.get('visitor_cnic', 'Not provided')}\n"
@@ -453,7 +455,8 @@ class AdminSupportFlow:
             return (
                 f"✅ All set! Your check-in has been recorded.\n"
                 f"{summary}"
-                "\n\nPress 'confirm' to proceed or 'edit' to make changes."
+                #f"\n\n🔐 Access Level: {access_level}"
+                "\nPress 'confirm' to proceed or 'edit' to make changes."
             )
             
         except Exception as e:
@@ -542,7 +545,7 @@ class AdminSupportFlow:
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
             try:
                 doc = {
-                    "type": "admin_support_flow",
+                    "type": "admin",
                     "visitor_name": self.visitor_info.get("visitor_name", ""),
                     "visitor_cnic": self.visitor_info.get("visitor_cnic", ""),
                     "visitor_phone": self.visitor_info.get("visitor_phone", ""),
@@ -580,7 +583,7 @@ class AdminSupportFlow:
                 service_display = self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else "Not specified")
                 pst = timezone(timedelta(hours=5))
                 timestamp = datetime.now(pst).strftime("%d-%m-%Y %I:%M:%S %p")
-                
+                access_level = 'L2'
                 message = (
     f"🛠️ <b>Admin Support Arrival Notice</b><br><br>"
     "Someone from the maintenance team has arrived at reception.<br><br>"
@@ -588,6 +591,7 @@ class AdminSupportFlow:
     f"📞 <b>Phone:</b> {self.visitor_info.get('visitor_phone', 'Not provided')}<br>"
     f"🔧 <b>Role:</b> {service_display}<br>"
     f"🏢 <b>To Meet:</b> {self.HOST_NAME}<br>"
+    f"🔐 <b>Access Level:</b> {access_level}<br>"
     f"🕒 <b>Time:</b> {timestamp}<br><br>"
     "Please receive them accordingly. ✅"
 )

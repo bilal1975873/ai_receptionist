@@ -455,9 +455,7 @@ class AIReceptionist:
             "purpose": context.get("purpose", ""),
             "current_step": context.get("current_step", "unknown"),
             "supplier": context.get("supplier", ""),
-            "group_size": context.get("total_members", 1),
-            "members_collected": len(context.get("group_members", [])),
-            "next_number": len(context.get("group_members", [])) + 2,
+            # Removed group visit fields
             "flow_type": context.get("visitor_type", ""),
             "validation_error": context.get("validation_error", ""),
             "is_repeated_error": context.get("is_repeated_error", False),  # Track repeated errors

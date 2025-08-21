@@ -6,7 +6,7 @@ from enum import Enum
 from flows import validate_name, validate_cnic, validate_phone, validate_with_context, ResponseContext
 from prompts import get_error_message, get_dynamic_prompt, get_confirmation_message
 import asyncio
-import pymongo
+ # removed pymongo (no longer needed)
 from datetime import timezone, timedelta
 
 # Configure logging
@@ -47,9 +47,8 @@ class CVInterviewJoinerFlow:
     VALID_CONFIRMATIONS = {"yes", "y", "confirm", "ok", "proceed"}
     HOST_NAME = "HR / Recruitment Team"
     
-    def __init__(self, ai, db_collection, visitor_info: Optional[Dict[str, Any]] = None):
+    def __init__(self, ai, visitor_info: Optional[Dict[str, Any]] = None):
         self.ai = ai
-        self.db_collection = db_collection
         self.visitor_info = visitor_info or {}
         self.response_context = ResponseContext()
         
@@ -466,16 +465,24 @@ class CVInterviewJoinerFlow:
         """Save visitor information to database with retry mechanism"""
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
             try:
-                doc = {
-                    "type": self.selected_option.value if self.selected_option else "",
-                    "visitor_name": self.visitor_info.get("visitor_name", ""),
-                    "visitor_cnic": self.visitor_info.get("visitor_cnic", ""),
-                    "visitor_phone": self.visitor_info.get("visitor_phone", ""),
-                    "host": self.HOST_NAME,
-                    "purpose": self.selected_option.value if self.selected_option else "",
-                    "timestamp": datetime.utcnow()
-                }
-                await self.db_collection.insert_one(doc)
+                from main import get_pg_pool
+                pool = await get_pg_pool()
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO visitors (visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, exit_time)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        """,
+                        self.selected_option.value if self.selected_option else "",
+                        self.visitor_info.get("visitor_name", ""),
+                        self.visitor_info.get("visitor_cnic", ""),
+                        self.visitor_info.get("visitor_phone", ""),
+                        self.visitor_info.get("visitor_email", None),
+                        self.HOST_NAME,
+                        self.selected_option.value if self.selected_option else "",
+                        datetime.utcnow(),
+                        None  # exit_time
+                    )
                 logger.info(f"Successfully saved visitor data: {self.visitor_info.get('visitor_name', 'Unknown')}")
                 return True
             except Exception as e:

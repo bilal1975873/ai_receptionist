@@ -294,7 +294,7 @@ GUEST FLOW SEQUENCE:
 visitor_type(1) -> name -> group_size -> cnic -> phone -> host -> purpose -> confirm -> complete
 
 VENDOR FLOW SEQUENCE:
-visitor_type(2) -> supplier -> vendor_name -> vendor_group_size -> vendor_cnic -> vendor_phone -> group_members -> vendor_confirm -> complete
+visitor_type(2) -> supplier -> vendor_name -> vendor_group_size -> vendor_cnic -> vendor_phone -> vendor_confirm -> complete
 
 SCHEDULED FLOW SEQUENCE:
 visitor_type(3) -> scheduled_name -> scheduled_cnic -> scheduled_phone -> scheduled_email -> scheduled_host -> scheduled_confirm -> complete

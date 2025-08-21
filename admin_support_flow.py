@@ -6,7 +6,7 @@ from enum import Enum
 from flows import validate_name, validate_cnic, validate_phone, validate_with_context, ResponseContext
 from prompts import get_error_message, get_dynamic_prompt, get_confirmation_message
 import asyncio
-import pymongo
+import asyncpg
 from datetime import timezone, timedelta
 
 # Configure logging
@@ -52,7 +52,7 @@ class AdminSupportFlow:
     
     def __init__(self, ai, db_collection, visitor_info: Optional[Dict[str, Any]] = None):
         self.ai = ai
-        self.db_collection = db_collection
+    # self.db_collection removed (no longer needed)
         self.visitor_info = visitor_info or {}
         self.response_context = ResponseContext()
         
@@ -541,28 +541,33 @@ class AdminSupportFlow:
         return role_terms.get(self.selected_service, "professional")
 
     async def _save_to_db_with_retry(self) -> bool:
-        """Save visitor information to database with retry mechanism"""
+        """Save visitor information to database with retry mechanism (PostgreSQL)"""
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
             try:
-                doc = {
-                    "type": "admin",
-                    "visitor_name": self.visitor_info.get("visitor_name", ""),
-                    "visitor_cnic": self.visitor_info.get("visitor_cnic", ""),
-                    "visitor_phone": self.visitor_info.get("visitor_phone", ""),
-                    "host": self.HOST_NAME,
-                    "purpose": self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else ""),
-                    "timestamp": datetime.utcnow()
-                }
-                
-                await self.db_collection.insert_one(doc)
+                from main import get_pg_pool
+                pool = await get_pg_pool()
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO visitors (visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, exit_time)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        """,
+                        "admin",
+                        self.visitor_info.get("visitor_name", ""),
+                        self.visitor_info.get("visitor_cnic", ""),
+                        self.visitor_info.get("visitor_phone", ""),
+                        None,  # email not collected in admin support
+                        self.HOST_NAME,
+                        self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else ""),
+                        datetime.utcnow(),
+                        None  # exit_time
+                    )
                 logger.info(f"Successfully saved admin support request: {self.visitor_info.get('visitor_name', 'Unknown')}")
                 return True
-                
             except Exception as e:
                 logger.error(f"Database save attempt {attempt + 1} failed: {e}")
                 if attempt < self.MAX_RETRY_ATTEMPTS - 1:
                     await asyncio.sleep(1)  # Brief delay before retry
-                
         logger.error("All database save attempts failed")
         return False
 

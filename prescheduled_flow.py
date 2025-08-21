@@ -4,7 +4,7 @@ from flows import validate_name, validate_cnic, validate_phone, validate_email
 from prompts import get_error_message
 from ai_integration import AIReceptionist
 import asyncio
-import pymongo
+import asyncpg
 import hashlib
 import uuid
 
@@ -565,28 +565,18 @@ class PreScheduledFlow:
             
         return confirm_message
 
-    async def insert_prescheduled_visitor_to_db(self, visitor_type, full_name, cnic, phone, host, purpose, is_group_visit=False, group_members=None, total_members=1, email=None):
-        from main import visitors_collection  # local import to avoid circular import
+    async def insert_prescheduled_visitor_to_db(self, visitor_type, full_name, cnic, phone, host, purpose, email=None):
+        from main import get_pg_pool
         entry_time = datetime.now(timezone.utc)
-        group_id = None
-        if is_group_visit:
-            group_id = str(datetime.now(timezone.utc).timestamp())
-        visitor_doc = {
-            "type": visitor_type,
-            "full_name": full_name,
-            "cnic": cnic,
-            "phone": phone,
-            "email": email,  # Added email field
-            "host": host,
-            "purpose": purpose,
-            "entry_time": entry_time,
-            "exit_time": None,
-            "is_group_visit": is_group_visit,
-            "group_id": group_id,
-            "total_members": total_members,
-            "group_members": group_members or []
-        }
-        await visitors_collection.insert_one(visitor_doc)
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO visitors (visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, exit_time)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """,
+                visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, None
+            )
 
     async def _finalize_registration(self):
         meeting = self.visitor_info["scheduled_meeting"]
@@ -626,7 +616,6 @@ class PreScheduledFlow:
             phone=self.visitor_info["visitor_phone"],
             host=self.visitor_info["host_confirmed"],
             purpose=subject,
-            is_group_visit=False,
             email=self.visitor_info["visitor_email"]
         )
         

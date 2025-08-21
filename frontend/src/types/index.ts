@@ -9,10 +9,7 @@ export interface Visitor {
   purpose: string;
   entry_time: string;
   exit_time?: string;
-  is_group_visit: boolean;
-  group_id?: string;
-  total_members: number;
-  group_members: GroupMember[];
+  // Removed group visit fields
 }
 
 export interface EmployeeMatch {
@@ -43,13 +40,10 @@ export interface VisitorInfo extends Partial<Visitor> {
   employee_selection_mode?: boolean;
   employee_matches?: EmployeeMatch[];
   registration_completed?: boolean;
+  // Removed group visit fields
 }
 
-export interface GroupMember {
-  name: string;
-  cnic: string;
-  phone: string;
-}
+// Removed GroupMember interface
 
 export interface Message {
   type: 'user' | 'bot';

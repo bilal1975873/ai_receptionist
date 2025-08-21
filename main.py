@@ -1,3 +1,10 @@
+# --- Utility: always return a timezone-aware UTC datetime ---
+def make_aware_utc(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 import os
 from dotenv import load_dotenv
 
@@ -21,7 +28,7 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
-from motor.motor_asyncio import AsyncIOMotorClient
+import asyncpg
 from datetime import datetime, timezone, timedelta
 from authlib.integrations.starlette_client import OAuth
 from starlette.middleware.sessions import SessionMiddleware
@@ -130,15 +137,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Load environment variables
 load_dotenv()
 
-# MongoDB Atlas setup
-MONGODB_URI = os.getenv("MONGODB_URI")
-if not MONGODB_URI:
-    raise ValueError("MONGODB_URI environment variable is not set")
 
-# Initialize MongoDB client
-client = AsyncIOMotorClient(MONGODB_URI)
-db = client.get_default_database()
-visitors_collection = db["visitors"]
+# PostgreSQL setup
+POSTGRES_DSN = os.getenv("POSTGRES_DSN", "postgresql://dpl_user:dpl_password@localhost:5433/dpl_receptionist")
+pg_pool = None
+
+async def get_pg_pool():
+    global pg_pool
+    if pg_pool is None:
+        pg_pool = await asyncpg.create_pool(dsn=POSTGRES_DSN)
+    return pg_pool
 
 # Add OAuth2 and JWT configuration
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
@@ -215,10 +223,7 @@ class Visitor(BaseModel):
     purpose: str
     entry_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     exit_time: Optional[datetime] = None
-    is_group_visit: bool = False
-    group_id: Optional[str] = None
-    total_members: int = 1
-    group_members: list = []
+    # Removed group visit fields
 
 # MongoDB error handler
 async def handle_db_operation(operation):
@@ -234,68 +239,90 @@ async def handle_db_operation(operation):
 @app.post("/visitors/", response_model=Visitor)
 async def create_visitor(visitor: Visitor):
     data = visitor.dict()
-    result = await handle_db_operation(visitors_collection.insert_one(data))
-    if not result.acknowledged:
-        raise HTTPException(status_code=500, detail="Failed to insert visitor.")
-    data["_id"] = str(result.inserted_id)
+    data["entry_time"] = make_aware_utc(data.get("entry_time"))
+    data["exit_time"] = make_aware_utc(data.get("exit_time"))
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO visitors (visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, exit_time)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING id
+            """,
+            data.get("visitor_type"), data.get("full_name"), data.get("cnic"), data.get("phone"), data.get("email"),
+            data.get("host"), data.get("purpose"), data.get("entry_time"), data.get("exit_time")
+        )
+        data["id"] = row["id"]
     return visitor
 
 @app.get("/visitors/", response_model=list[Visitor])
 async def list_visitors():
-    visitors = []
-    cursor = visitors_collection.find()
-    async for visitor in cursor:
-        visitor["_id"] = str(visitor["_id"])
-        visitors.append(visitor)
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM visitors")
+        visitors = [dict(row) for row in rows]
     return visitors
 
 @app.get("/visitors/{cnic}", response_model=Visitor)
 async def get_visitor(cnic: str):
-    visitor = await handle_db_operation(visitors_collection.find_one({"cnic": cnic}))
-    if not visitor:
-        raise HTTPException(status_code=404, detail="Visitor not found.")
-    visitor["_id"] = str(visitor["_id"])
-    return Visitor(**visitor)
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM visitors WHERE cnic=$1", cnic)
+        if not row:
+            raise HTTPException(status_code=404, detail="Visitor not found.")
+        return Visitor(**dict(row))
 
 @app.put("/visitors/{cnic}", response_model=Visitor)
 async def update_visitor(cnic: str, update: Visitor):
-    result = await handle_db_operation(
-        visitors_collection.update_one({"cnic": cnic}, {"$set": update.dict()})
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Visitor not found.")
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE visitors SET full_name=$1, phone=$2, email=$3, host=$4, purpose=$5, exit_time=$6 WHERE cnic=$7",
+            update.full_name, update.phone, update.email, update.host, update.purpose, update.exit_time, cnic
+        )
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Visitor not found.")
     return update
 
 @app.delete("/visitors/{cnic}")
 async def delete_visitor(cnic: str):
-    result = await handle_db_operation(visitors_collection.delete_one({"cnic": cnic}))
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Visitor not found.")
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM visitors WHERE cnic=$1", cnic)
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Visitor not found.")
     return {"detail": "Visitor deleted."}
 
-async def insert_visitor_to_db(visitor_type, full_name, cnic, phone, host, purpose, is_group_visit=False, group_members=None, total_members=1, email=None):
-    entry_time = datetime.now(timezone.utc)
-    group_id = None
-   
-    if is_group_visit:
-        group_id = str(datetime.now(timezone.utc).timestamp())
-
+async def insert_visitor_to_db(visitor_type, full_name, cnic, phone, host, purpose, email=None):
+    entry_time = make_aware_utc(datetime.now(timezone.utc))
     visitor_doc = {
-        "type": visitor_type,
+        "visitor_type": visitor_type,
         "full_name": full_name,
         "cnic": cnic,
         "phone": phone,
-        "email": email,  # Added email field
+        "email": email,
         "host": host,
         "purpose": purpose,
-        "entry_time": entry_time,
-        "exit_time": None,
-        "is_group_visit": is_group_visit,
-        "group_id": group_id,
-        "total_members": total_members,
-        "group_members": group_members or []
+        "entry_time": make_aware_utc(entry_time),
+        "exit_time": make_aware_utc(None)
     }
-    await visitors_collection.insert_one(visitor_doc)
+    pool = await get_pg_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO visitors (visitor_type, full_name, cnic, phone, email, host, purpose, entry_time, exit_time)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            """,
+            visitor_doc.get("visitor_type"),
+            visitor_doc.get("full_name"),
+            visitor_doc.get("cnic"),
+            visitor_doc.get("phone"),
+            visitor_doc.get("email"),
+            visitor_doc.get("host"),
+            visitor_doc.get("purpose"),
+            visitor_doc.get("entry_time"),
+            visitor_doc.get("exit_time")
+        )
 
 class VisitorInfo:
     def __init__(self):
@@ -309,10 +336,7 @@ class VisitorInfo:
         self.purpose = None
         self.verification_status = None
         self.supplier = None  # For vendor flow
-        self.group_id = None  # For group visits
-        self.is_group_visit = False
-        self.group_members = []  # List to store additional visitors
-        self.total_members = 1  # Default to 1, will be updated for groups
+    # Removed group visit fields
        
     def to_dict(self):
         return {
@@ -326,10 +350,7 @@ class VisitorInfo:
             "purpose": self.purpose,
             "verification_status": self.verification_status,
             "supplier": self.supplier,
-            "group_id": self.group_id,
-            "is_group_visit": self.is_group_visit,
-            "total_members": self.total_members,
-            "group_members": self.group_members
+            # Removed group visit fields
         }
    
     def summary(self):
@@ -394,11 +415,11 @@ class DPLReceptionist:
                 return ai_prompt
             elif user_input in ["4", "cv drop", "interview", "new joiner", "cv drop / interview / new joiner"]:
                 self.visitor_info.visitor_type = "cv_interview_joiner"
-                self.cv_interview_joiner_flow = CVInterviewJoinerFlow(ai=self.ai, db_collection=visitors_collection)
+                self.cv_interview_joiner_flow = CVInterviewJoinerFlow(ai=self.ai)
                 return await self.cv_interview_joiner_flow.start_flow()
             elif user_input in ["5", "admin support", "🛠️ admin support – pipes burst? wires fried? furniture falling apart?"]:
                 self.visitor_info.visitor_type = "admin_support"
-                self.admin_support_flow = AdminSupportFlow(ai=self.ai, db_collection=visitors_collection)
+                self.admin_support_flow = AdminSupportFlow(ai=self.ai, db_collection=None)
                 return await self.admin_support_flow.start_flow()
             else:
                 # Return standard error message for invalid input
@@ -489,9 +510,7 @@ class DPLReceptionist:
                         phone=self.visitor_info.visitor_phone or "",
                         host=self.visitor_info.host_confirmed or self.visitor_info.host_requested or "",
                         purpose=self.visitor_info.purpose or "",
-                        is_group_visit=self.visitor_info.is_group_visit,
-                        group_members=self.visitor_info.group_members,
-                        total_members=self.visitor_info.total_members
+                        # Removed group visit fields
                     )
                     # Send notification to admin only (not host)
                     try:
@@ -585,8 +604,7 @@ class DPLReceptionist:
                     return get_error_message("name")
                 self.visitor_info.visitor_name = user_input.strip()
                 # Set default group visit values (single visitor)
-                self.visitor_info.total_members = 1
-                self.visitor_info.is_group_visit = False
+                # Removed group visit fields
                 self.current_step = "vendor_cnic"
                 context["current_step"] = self.current_step
                 ai_msg = await self.get_ai_response(user_input, context)
@@ -605,20 +623,11 @@ class DPLReceptionist:
                 if not validate_phone(user_input.strip()):
                     return get_error_message("phone_invalid")
                 self.visitor_info.visitor_phone = user_input.strip()
-                if self.visitor_info.is_group_visit and len(self.visitor_info.group_members) < self.visitor_info.total_members - 1:
-                    next_member = len(self.visitor_info.group_members) + 2
-                    self.current_step = f"vendor_member_{next_member}_name"
-                    context["current_step"] = self.current_step
-                    context["next_member"] = next_member
-                    ai_msg = await self.get_ai_response(user_input, context)
-                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
+                # Removed group visit logic
                 self.current_step = "vendor_confirm"
                 context["current_step"] = self.current_step
                 summary = f"Supplier: {self.visitor_info.supplier}\nName: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
-                if self.visitor_info.is_group_visit:
-                    summary += f"\nGroup size: {self.visitor_info.total_members}"
-                    for idx, member in enumerate(self.visitor_info.group_members, 2):
-                        summary += f"\nMember {idx}: {member.get('name','')} / {member.get('cnic','')} / {member.get('phone','')}"
+                # Removed group visit summary
 
                 confirm_msg = get_confirmation_message().format(details=summary)
                 return confirm_msg
@@ -631,42 +640,7 @@ class DPLReceptionist:
                     "member_number": member_num,
                     **self.visitor_info.to_dict()
                 }
-                if substep == "name":
-                    if not validate_name(user_input.strip()):
-                        return get_error_message("name")
-                    self.visitor_info.group_members.append({"name": user_input.strip()})
-                    self.current_step = f"vendor_member_{member_num}_cnic"
-                    context["current_step"] = self.current_step
-                    ai_msg = await self.get_ai_response(user_input, context)
-                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
-                elif substep == "cnic":
-                    if not validate_cnic(user_input.strip()):
-                        return get_error_message("cnic_invalid")
-                    self.visitor_info.group_members[member_num-2]["cnic"] = user_input.strip()
-                    self.current_step = f"vendor_member_{member_num}_phone"
-                    context["current_step"] = self.current_step
-                    ai_msg = await self.get_ai_response(user_input, context)
-                    return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
-                elif substep == "phone":
-                    if not validate_phone(user_input.strip()):
-                        return get_error_message("phone_invalid")
-                    self.visitor_info.group_members[member_num-2]["phone"] = user_input.strip()
-                    if len(self.visitor_info.group_members) < self.visitor_info.total_members - 1:
-                        next_member = len(self.visitor_info.group_members) + 2
-                        self.current_step = f"vendor_member_{next_member}_name"
-                        context["current_step"] = self.current_step
-                        ai_msg = await self.get_ai_response(user_input, context)
-                        return ai_msg if ai_msg else "Sorry, something went wrong. Please try again."
-                    else:
-                        self.current_step = "vendor_confirm"
-                        context["current_step"] = self.current_step
-                        summary = f"Supplier: {self.visitor_info.supplier}\nName: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
-                        if self.visitor_info.is_group_visit:
-                            summary += f"\nGroup size: {self.visitor_info.total_members}"
-                            for idx, member in enumerate(self.visitor_info.group_members, 2):
-                                summary += f"\nMember {idx}: {member.get('name','')} / {member.get('cnic','')} / {member.get('phone','')}"
-                        confirm_msg = get_confirmation_message().format(details=summary)
-                        return confirm_msg
+                # Removed group visit member logic
             elif self.current_step == "vendor_confirm":
                 context = {"current_step": self.current_step, **self.visitor_info.to_dict()}
                 if user_input.lower() in ["yes", "confirm"]:
@@ -679,9 +653,7 @@ class DPLReceptionist:
                         phone=self.visitor_info.visitor_phone or "",
                         host="Admin",
                         purpose=f"Vendor visit - {self.visitor_info.supplier}",
-                        is_group_visit=self.visitor_info.is_group_visit,
-                        group_members=self.visitor_info.group_members,
-                        total_members=self.visitor_info.total_members
+                        # Removed group visit fields
                     )
                     try:
                         access_token = self.ai.get_system_account_token()
@@ -700,15 +672,7 @@ class DPLReceptionist:
     f"📞 Phone: {self.visitor_info.visitor_phone}<br>"
     f"🔐 Access Level: {access_level}"
                         )
-                        if self.visitor_info.is_group_visit:
-                            message += f"<br>👥 Group size: {self.visitor_info.total_members}"
-                            for idx, member in enumerate(self.visitor_info.group_members, 2):
-                                message += (
-     f"<br>Member {idx}:<br>"
-    f"&nbsp;&nbsp;👤 Name: {member.get('name','')}<br>"
-    f"&nbsp;&nbsp;🆔 CNIC: {member.get('cnic','')}<br>"
-    f"&nbsp;&nbsp;📞 Phone: {member.get('phone','')}"
-)
+                        # Removed group visit message
                         await self.ai.send_message_to_host(chat_id, access_token, message)
                     except Exception as e:
                         print(f"Error in Teams notification process: {e}")
@@ -721,10 +685,7 @@ class DPLReceptionist:
                     return f"{ai_msg if ai_msg else 'Sorry, something went wrong. Please try again.'}\n{supplier_list}"
                 else:
                     summary = f"Supplier: {self.visitor_info.supplier}\nName: {self.visitor_info.visitor_name}\nCNIC: {self.visitor_info.visitor_cnic}\nPhone: {self.visitor_info.visitor_phone}"
-                    if self.visitor_info.is_group_visit:
-                        summary += f"\nGroup size: {self.visitor_info.total_members}"
-                        for idx, member in enumerate(self.visitor_info.group_members, 2):
-                            summary += f"\nMember {idx}: {member.get('name','')} / {member.get('cnic','')} / {member.get('phone','')}"
+                    # Removed group visit summary
                     confirm_msg = get_confirmation_message().format(details=summary)
                     return confirm_msg
             elif self.current_step == "complete":
@@ -931,9 +892,8 @@ class DPLReceptionist:
                         phone=self.visitor_info.visitor_phone,
                         host=self.visitor_info.host_confirmed,
                         purpose=meeting['purpose'],
-                        is_group_visit=False,
-                        email=self.visitor_info.visitor_email,
-                        scheduled_time=scheduled_time
+                        # Removed group visit fields
+                        email=self.visitor_info.visitor_email
                     )
                     try:
                         access_token = self.ai.get_system_account_token()
@@ -1143,7 +1103,7 @@ async def process_message(request: Request, message_req: MessageRequest):
         if message_req.visitor_info and message_req.visitor_info.get('visitor_type') == 'cv_interview_joiner':
             flow = CVInterviewJoinerFlow(
                 ai=ai_receptionist,
-                db_collection=visitors_collection,
+                # db_collection removed
                 visitor_info=message_req.visitor_info
             )
             if message_req.current_step:
@@ -1164,7 +1124,7 @@ async def process_message(request: Request, message_req: MessageRequest):
         if message_req.visitor_info and message_req.visitor_info.get('visitor_type') == 'admin_support':
             flow = AdminSupportFlow(
                 ai=ai_receptionist,
-                db_collection=visitors_collection,
+                db_collection=None,
                 visitor_info=message_req.visitor_info
             )
             if message_req.current_step:

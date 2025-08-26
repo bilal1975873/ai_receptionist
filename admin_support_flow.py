@@ -541,11 +541,13 @@ class AdminSupportFlow:
         return role_terms.get(self.selected_service, "professional")
 
     def _get_pakistan_time(self):
-        """Get current time in Pakistan timezone"""
+        """Get current time in Pakistan timezone as timezone-naive datetime"""
         import pytz
-        # Directly get Pakistan time without UTC conversion
+        # Get Pakistan time and remove timezone info for database storage
         pakistan_tz = pytz.timezone('Asia/Karachi')
-        return datetime.now(pakistan_tz)
+        pk_time = datetime.now(pakistan_tz)
+        # Return timezone-naive datetime (PostgreSQL will store as-is)
+        return pk_time.replace(tzinfo=None)
 
     async def _save_to_db_with_retry(self) -> bool:
         """Save visitor information to database with retry mechanism (PostgreSQL)"""
@@ -594,11 +596,9 @@ class AdminSupportFlow:
                 # Enhanced notification message
                 service_display = self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else "Not specified")
                 import pytz
-                from datetime import timezone
-                # Get UTC time first, then convert to Pakistan timezone
-                utc_now = datetime.now(timezone.utc)
+                # Get Pakistan time directly for notification timestamp
                 pkt = pytz.timezone('Asia/Karachi')  # Pakistan Standard Time
-                timestamp = utc_now.astimezone(pkt).strftime("%d-%m-%Y %I:%M:%S %p")
+                timestamp = datetime.now(pkt).strftime("%d-%m-%Y %I:%M:%S %p")
                 access_level = 'L2'
                 message = (
     f"🛠️ <b>Admin Support Arrival Notice</b><br><br>"

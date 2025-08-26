@@ -1,18 +1,20 @@
-# --- Utility: always return a timezone-aware Pakistan datetime ---
-def make_aware_utc(dt):
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+# --- Utility: Pakistan timezone functions ---
 
 # --- Utility: Get Pakistan Standard Time ---
 def get_pakistan_time():
-    """Get current time in Pakistan timezone (UTC+5)"""
+    """Get current time in Pakistan timezone (UTC+5) as timezone-naive datetime"""
     import pytz
-    # Directly get Pakistan time without UTC conversion
+    # Get Pakistan time and remove timezone info for database storage
     pakistan_tz = pytz.timezone('Asia/Karachi')
-    return datetime.now(pakistan_tz)
+    pk_time = datetime.now(pakistan_tz)
+    # Return timezone-naive datetime (PostgreSQL will store as-is)
+    return pk_time.replace(tzinfo=None)
+
+def convert_utc_to_pakistan(utc_datetime):
+    """Convert UTC datetime to Pakistan timezone"""
+    import pytz
+    pkt = pytz.timezone('Asia/Karachi')
+    return utc_datetime.astimezone(pkt)
 import os
 from dotenv import load_dotenv
 
@@ -809,8 +811,8 @@ class DPLReceptionist:
                     event = meeting['original_event']
                     start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                     end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                    pk_start = start_time + timedelta(hours=5)
-                    pk_end = end_time + timedelta(hours=5)
+                    pk_start = convert_utc_to_pakistan(start_time)
+                    pk_end = convert_utc_to_pakistan(end_time)
                     options += f"{i}. {pk_start.strftime('%b %d, %I:%M %p')} - {pk_end.strftime('%I:%M %p')} | {meeting.get('purpose','No Purpose')}\n"
                 options += "0. None of these / My meeting is not listed"
                 return options
@@ -841,8 +843,8 @@ class DPLReceptionist:
                     event = meeting['original_event']
                     start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                     end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                    pk_start = start_time + timedelta(hours=5)
-                    pk_end = end_time + timedelta(hours=5)
+                    pk_start = convert_utc_to_pakistan(start_time)
+                    pk_end = convert_utc_to_pakistan(end_time)
                     meeting_text = f"{pk_start.strftime('%b %d, %I:%M %p')} - {pk_end.strftime('%I:%M %p')} | {meeting.get('purpose','No Purpose')}"
                     if user_input.strip() == meeting_text.strip():
                         selected_idx = i
@@ -862,8 +864,8 @@ class DPLReceptionist:
                         event = meeting['original_event']
                         start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                         end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                        pk_start = start_time + timedelta(hours=5)
-                        pk_end = end_time + timedelta(hours=5)
+                        pk_start = convert_utc_to_pakistan(start_time)
+                        pk_end = convert_utc_to_pakistan(end_time)
                         options += f"{i}. {pk_start.strftime('%b %d, %I:%M %p')} - {pk_end.strftime('%I:%M %p')} | {meeting.get('purpose','No Purpose')}\n"
                     options += "0. None of these / My meeting is not listed\n"
                     options += "\nInvalid selection. Please enter a valid number."
@@ -882,8 +884,8 @@ class DPLReceptionist:
                 event = meeting['original_event']
                 start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                 end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                pk_start = start_time + timedelta(hours=5)
-                pk_end = end_time + timedelta(hours=5)
+                pk_start = convert_utc_to_pakistan(start_time)
+                pk_end = convert_utc_to_pakistan(end_time)
                 host = self.visitor_info.host_confirmed or "(Unknown Host)"
                 location = event.get('location', {}).get('displayName', 'DPL Office')
                 meeting_info = (
@@ -902,8 +904,8 @@ class DPLReceptionist:
                 event = meeting['original_event']
                 start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                 end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                pk_start = start_time + timedelta(hours=5)
-                pk_end = end_time + timedelta(hours=5)
+                pk_start = convert_utc_to_pakistan(start_time)
+                pk_end = convert_utc_to_pakistan(end_time)
                 options += f"{i}. {pk_start.strftime('%b %d, %I:%M %p')} - {pk_end.strftime('%I:%M %p')} | {meeting.get('purpose','No Purpose')}\n"
             options += "0. None of these / My meeting is not listed\n"
             options += "\nNo valid selection. Please enter a valid number or meeting description."
@@ -982,8 +984,8 @@ class DPLReceptionist:
                     event = meeting['original_event']
                     start_time = datetime.fromisoformat(event['start']['dateTime'].replace('Z', '+00:00'))
                     end_time = datetime.fromisoformat(event['end']['dateTime'].replace('Z', '+00:00'))
-                    pk_start = start_time + timedelta(hours=5)
-                    pk_end = end_time + timedelta(hours=5)
+                    pk_start = convert_utc_to_pakistan(start_time)
+                    pk_end = convert_utc_to_pakistan(end_time)
                     host = self.visitor_info.host_confirmed or "(Unknown Host)"
                     location = event.get('location', {}).get('displayName', 'DPL Office')
                     meeting_info = (

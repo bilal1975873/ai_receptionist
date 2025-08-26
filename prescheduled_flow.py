@@ -294,7 +294,7 @@ class PreScheduledFlow:
         """Check meetings across all host calendars for the visitor's email - OPTIMIZED VERSION"""
         print(f"[DEBUG] Checking meetings across all hosts for email: {self.visitor_info['visitor_email']}")
         
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(timezone.utc)  # Keep UTC for API calls
         
         # Create all tasks for parallel execution
         tasks = []
@@ -566,8 +566,8 @@ class PreScheduledFlow:
         return confirm_message
 
     async def insert_prescheduled_visitor_to_db(self, visitor_type, full_name, cnic, phone, host, purpose, email=None):
-        from main import get_pg_pool
-        entry_time = datetime.now(timezone.utc)
+        from main import get_pg_pool, get_pakistan_time
+        entry_time = get_pakistan_time()
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             await conn.execute(

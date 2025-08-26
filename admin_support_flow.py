@@ -540,6 +540,12 @@ class AdminSupportFlow:
         }
         return role_terms.get(self.selected_service, "professional")
 
+    def _get_pakistan_time(self):
+        """Get current time in Pakistan timezone"""
+        import pytz
+        pakistan_tz = pytz.timezone('Asia/Karachi')
+        return datetime.now(pakistan_tz)
+
     async def _save_to_db_with_retry(self) -> bool:
         """Save visitor information to database with retry mechanism (PostgreSQL)"""
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
@@ -559,7 +565,7 @@ class AdminSupportFlow:
                         None,  # email not collected in admin support
                         self.HOST_NAME,
                         self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else ""),
-                        datetime.utcnow(),
+                        self._get_pakistan_time(),
                         None  # exit_time
                     )
                 logger.info(f"Successfully saved admin support request: {self.visitor_info.get('visitor_name', 'Unknown')}")
@@ -586,8 +592,9 @@ class AdminSupportFlow:
                 
                 # Enhanced notification message
                 service_display = self.visitor_info.get("service_type", self.selected_service.value if self.selected_service else "Not specified")
-                pst = timezone(timedelta(hours=5))
-                timestamp = datetime.now(pst).strftime("%d-%m-%Y %I:%M:%S %p")
+                import pytz
+                pkt = pytz.timezone('Asia/Karachi')  # Pakistan Standard Time
+                timestamp = datetime.now(pkt).strftime("%d-%m-%Y %I:%M:%S %p")
                 access_level = 'L2'
                 message = (
     f"🛠️ <b>Admin Support Arrival Notice</b><br><br>"

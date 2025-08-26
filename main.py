@@ -1,10 +1,17 @@
-# --- Utility: always return a timezone-aware UTC datetime ---
+# --- Utility: always return a timezone-aware Pakistan datetime ---
 def make_aware_utc(dt):
     if dt is None:
         return None
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+# --- Utility: Get Pakistan Standard Time ---
+def get_pakistan_time():
+    """Get current time in Pakistan timezone (UTC+5)"""
+    import pytz
+    pakistan_tz = pytz.timezone('Asia/Karachi')
+    return datetime.now(pakistan_tz)
 import os
 from dotenv import load_dotenv
 
@@ -175,9 +182,9 @@ class TokenData(BaseModel):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -221,7 +228,7 @@ class Visitor(BaseModel):
     email: Optional[str] = None
     host: str
     purpose: str
-    entry_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    entry_time: datetime = Field(default_factory=lambda: get_pakistan_time())
     exit_time: Optional[datetime] = None
     # Removed group visit fields
 
@@ -239,8 +246,10 @@ async def handle_db_operation(operation):
 @app.post("/visitors/", response_model=Visitor)
 async def create_visitor(visitor: Visitor):
     data = visitor.dict()
-    data["entry_time"] = make_aware_utc(data.get("entry_time"))
-    data["exit_time"] = make_aware_utc(data.get("exit_time"))
+    # Ensure entry_time is in Pakistan timezone if not already set
+    if not data.get("entry_time"):
+        data["entry_time"] = get_pakistan_time()
+    data["exit_time"] = data.get("exit_time")
     pool = await get_pg_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -294,7 +303,7 @@ async def delete_visitor(cnic: str):
     return {"detail": "Visitor deleted."}
 
 async def insert_visitor_to_db(visitor_type, full_name, cnic, phone, host, purpose, email=None):
-    entry_time = make_aware_utc(datetime.now(timezone.utc))
+    entry_time = get_pakistan_time()
     visitor_doc = {
         "visitor_type": visitor_type,
         "full_name": full_name,
@@ -303,8 +312,8 @@ async def insert_visitor_to_db(visitor_type, full_name, cnic, phone, host, purpo
         "email": email,
         "host": host,
         "purpose": purpose,
-        "entry_time": make_aware_utc(entry_time),
-        "exit_time": make_aware_utc(None)
+        "entry_time": entry_time,
+        "exit_time": None
     }
     pool = await get_pg_pool()
     async with pool.acquire() as conn:

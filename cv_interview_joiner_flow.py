@@ -461,6 +461,12 @@ class CVInterviewJoinerFlow:
         }
         return purpose_terms.get(self.selected_option, "visitor")
 
+    def _get_pakistan_time(self):
+        """Get current time in Pakistan timezone"""
+        import pytz
+        pakistan_tz = pytz.timezone('Asia/Karachi')
+        return datetime.now(pakistan_tz)
+
     async def _save_to_db_with_retry(self) -> bool:
         """Save visitor information to database with retry mechanism"""
         for attempt in range(self.MAX_RETRY_ATTEMPTS):
@@ -480,7 +486,7 @@ class CVInterviewJoinerFlow:
                         self.visitor_info.get("visitor_email", None),
                         self.HOST_NAME,
                         self.selected_option.value if self.selected_option else "",
-                        datetime.utcnow(),
+                        self._get_pakistan_time(),
                         None  # exit_time
                     )
                 logger.info(f"Successfully saved visitor data: {self.visitor_info.get('visitor_name', 'Unknown')}")
@@ -507,8 +513,9 @@ class CVInterviewJoinerFlow:
                 
                 # Enhanced notification message
                 purpose_display = self.selected_option.value if self.selected_option else "Not specified"
-                pst = timezone(timedelta(hours=5))
-                timestamp = datetime.now(pst).strftime("%d-%m-%Y %I:%M:%S %p")
+                import pytz
+                pkt = pytz.timezone('Asia/Karachi')  # Pakistan Standard Time
+                timestamp = datetime.now(pkt).strftime("%d-%m-%Y %I:%M:%S %p")
                 
                 # For CV/Interview/New Joiner, access level is always L1
                 access_level = 'L1'

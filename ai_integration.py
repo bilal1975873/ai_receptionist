@@ -186,7 +186,7 @@ class AIReceptionist:
     def _cache_token(self, token: str, expiry: datetime = None):
         """Cache a token with optional expiry time"""
         if not expiry:
-            expiry = datetime.utcnow() + timedelta(hours=1)
+            expiry = datetime.now(timezone.utc) + timedelta(hours=1)
         with self._token_cache_lock:
             self._token_cache = {
                 'token': token,

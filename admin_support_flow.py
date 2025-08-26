@@ -543,11 +543,9 @@ class AdminSupportFlow:
     def _get_pakistan_time(self):
         """Get current time in Pakistan timezone"""
         import pytz
-        from datetime import timezone
-        # Always get UTC time first, then convert to Pakistan timezone
-        utc_now = datetime.now(timezone.utc)
+        # Directly get Pakistan time without UTC conversion
         pakistan_tz = pytz.timezone('Asia/Karachi')
-        return utc_now.astimezone(pakistan_tz)
+        return datetime.now(pakistan_tz)
 
     async def _save_to_db_with_retry(self) -> bool:
         """Save visitor information to database with retry mechanism (PostgreSQL)"""

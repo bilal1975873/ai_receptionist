@@ -10,10 +10,9 @@ def make_aware_utc(dt):
 def get_pakistan_time():
     """Get current time in Pakistan timezone (UTC+5)"""
     import pytz
-    # Always get UTC time first, then convert to Pakistan timezone
-    utc_now = datetime.now(timezone.utc)
+    # Directly get Pakistan time without UTC conversion
     pakistan_tz = pytz.timezone('Asia/Karachi')
-    return utc_now.astimezone(pakistan_tz)
+    return datetime.now(pakistan_tz)
 import os
 from dotenv import load_dotenv
 

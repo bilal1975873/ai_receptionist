@@ -10,8 +10,10 @@ def make_aware_utc(dt):
 def get_pakistan_time():
     """Get current time in Pakistan timezone (UTC+5)"""
     import pytz
+    # Always get UTC time first, then convert to Pakistan timezone
+    utc_now = datetime.now(timezone.utc)
     pakistan_tz = pytz.timezone('Asia/Karachi')
-    return datetime.now(pakistan_tz)
+    return utc_now.astimezone(pakistan_tz)
 import os
 from dotenv import load_dotenv
 
@@ -269,7 +271,22 @@ async def list_visitors():
     pool = await get_pg_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("SELECT * FROM visitors")
-        visitors = [dict(row) for row in rows]
+        visitors = []
+        for row in rows:
+            visitor_dict = dict(row)
+            # Ensure entry_time is in Pakistan timezone for display
+            if visitor_dict.get('entry_time'):
+                if visitor_dict['entry_time'].tzinfo is None:
+                    # If timezone-naive, assume it's already Pakistan time
+                    import pytz
+                    pkt = pytz.timezone('Asia/Karachi')
+                    visitor_dict['entry_time'] = pkt.localize(visitor_dict['entry_time'])
+                else:
+                    # Convert to Pakistan timezone
+                    import pytz
+                    pkt = pytz.timezone('Asia/Karachi')
+                    visitor_dict['entry_time'] = visitor_dict['entry_time'].astimezone(pkt)
+            visitors.append(visitor_dict)
     return visitors
 
 @app.get("/visitors/{cnic}", response_model=Visitor)
@@ -279,7 +296,20 @@ async def get_visitor(cnic: str):
         row = await conn.fetchrow("SELECT * FROM visitors WHERE cnic=$1", cnic)
         if not row:
             raise HTTPException(status_code=404, detail="Visitor not found.")
-        return Visitor(**dict(row))
+        visitor_dict = dict(row)
+        # Ensure entry_time is in Pakistan timezone for display
+        if visitor_dict.get('entry_time'):
+            if visitor_dict['entry_time'].tzinfo is None:
+                # If timezone-naive, assume it's already Pakistan time
+                import pytz
+                pkt = pytz.timezone('Asia/Karachi')
+                visitor_dict['entry_time'] = pkt.localize(visitor_dict['entry_time'])
+            else:
+                # Convert to Pakistan timezone
+                import pytz
+                pkt = pytz.timezone('Asia/Karachi')
+                visitor_dict['entry_time'] = visitor_dict['entry_time'].astimezone(pkt)
+        return Visitor(**visitor_dict)
 
 @app.put("/visitors/{cnic}", response_model=Visitor)
 async def update_visitor(cnic: str, update: Visitor):
